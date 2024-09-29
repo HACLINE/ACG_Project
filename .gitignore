@@ -1,0 +1,7 @@
+cmake-build-*
+.idea
+.vscode
+build
+out
+bin
+config/_*.yaml
