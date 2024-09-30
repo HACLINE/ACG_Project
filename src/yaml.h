@@ -1,3 +1,6 @@
+#ifndef YAML_H
+#define YAML_H
+
 #include <yaml-cpp/yaml.h>
 #include <iostream>
 #include <fstream>
@@ -14,3 +17,5 @@ YAML::Node yaml_solver(const std::string filename, const std::string cwd) {
     }
     return config;
 }
+
+#endif
