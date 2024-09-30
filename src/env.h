@@ -2,23 +2,32 @@
 #define ENV_H
 
 #include <vector>
+#include <yaml-cpp/yaml.h>
 #include "geometry.h"
+#include "rigid_body.h"
+#include "fluid.h"
 
 class Simulation {
     public:
-        void initialize(const std::vector<Vertex>& solidVertices, const std::vector<Face>& solidFaces,
-                        const std::vector<Particle>& liquidParticles);
+        Simulation();
+        Simulation(YAML::Node config);
+        ~Simulation();
 
         void update(float dt);
 
-        void getSolidMesh(std::vector<Vertex>& vertices, std::vector<Face>& faces) const;
+        void addRigidbody(const Rigidbody&);
+        void addFluid(const Fluid&);
 
-        void getLiquidParticles(std::vector<Particle>& particles) const;
+        inline int getNumRigidbodies() const { return rigidbodies_.size(); }
+        inline int getNumFluids() const { return fluids_.size(); }
+        const Rigidbody& getRigidbody(int i) const;
+        const Fluid& getFluid(int i) const;
+        inline const std::vector<Rigidbody>& getRigidbodies() const { return rigidbodies_; }
+        inline const std::vector<Fluid>& getFluids() const { return fluids_; }
     
     private:
-        std::vector<Vertex> solidVertices_;
-        std::vector<Face> solidFaces_;
-        std::vector<Particle> liquidParticles_;
+        std::vector<Rigidbody> rigidbodies_;
+        std::vector<Fluid> fluids_;
 };
 
 #endif

@@ -9,4 +9,7 @@ cmake ..
 make -j
 
 mkdir config
-cp ../config/* config/
+mkdir assets
+mkdir figures
+cp -r ../config/* config/
+cp -r ../assets/* assets/

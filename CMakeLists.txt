@@ -16,5 +16,6 @@ include_directories(${OPENGL_INCLUDE_DIRS} ${GLUT_INCLUDE_DIRS} ${GLM_INCLUDE_DI
 target_include_directories(main PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_include_directories(main PRIVATE ${CMAKE_SOURCE_DIR}/external/glm)
 target_include_directories(main PRIVATE ${CMAKE_SOURCE_DIR}/external/tiny_obj_loader)
+target_include_directories(main PRIVATE ${CMAKE_SOURCE_DIR}/external/stb_image_write)
 
 target_link_libraries(main ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} glm::glm yaml-cpp::yaml-cpp)

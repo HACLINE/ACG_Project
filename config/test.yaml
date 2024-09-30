@@ -1,2 +1,13 @@
+# global
 name: test
 base: basic_config.yaml
+
+render:
+  title: WoBingWang
+  clearcolor: [1.0, 1.0, 1.0, 1.0]
+
+load:
+  rigidbody:
+    cfg: [[test.obj]]
+  fluid:
+    cfg: [[test.fluid]]

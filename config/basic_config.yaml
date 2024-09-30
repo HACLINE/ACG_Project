@@ -1,1 +1,31 @@
-test: 1
+render:
+  init:
+    argc: 0
+    argv: []
+  camera:
+    eye: [0.0, 5.0, 5.0]
+    center: [0.0, 0.0, 0.0]
+    up: [0.0, 1.0, 0.0]
+  title: Basic
+  windowsize: [800, 600]
+  viewport: [0, 0, 800, 600]
+  perspective: 
+    fovy: 45.0
+    aspect: 1.3333
+    znear: 1.0
+    zfar: 1000.0
+  clearcolor: [1.0, 1.0, 1.0, 1.0]
+  light:
+    position: [1.0, 1.0, 1.0, 0.0]
+    ambient: [0.2, 0.2, 0.2, 1.0]
+    diffuse: [0.8, 0.8, 0.8, 1.0]
+    specular: [1.0, 1.0, 1.0, 1.0]
+
+load:
+  rigidbody:
+    path: /assets/rigidbody
+    cfg: []
+  fluid:
+    path: /assets/fluid
+    cfg: []
+# here each cfg should be a list of list ex. [[test.obj], [test2.obj]]

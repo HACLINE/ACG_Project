@@ -21,24 +21,6 @@ void saveFrame(const std::string& filename, int width, int height) {
     stbi_write_png(filename.c_str(), width, height, 3, buffer.data(), width * 3);
 }
 
-void setupLighting() {
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-
-    GLfloat light_position[] = { 1.0, 1.0, 1.0, 0.0 };
-    GLfloat light_ambient[] = { 0.2, 0.2, 0.2, 1.0 };
-    GLfloat light_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
-    GLfloat light_specular[] = { 1.0, 1.0, 1.0, 1.0 };
-
-    glLightfv(GL_LIGHT0, GL_POSITION, light_position);
-    glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
-
-    glEnable(GL_COLOR_MATERIAL);
-    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
-}
-
 /*
 ./main --config config.yaml
 */
@@ -61,50 +43,21 @@ int main(int argc, char* argv[]) {
     }
     YAML::Node config = yaml_solver(args["config"], std::string(cwd));
 
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-    glutInitWindowSize(800, 600);
-    glutCreateWindow("WoBingWang");
-
-    glEnable(GL_DEPTH_TEST);
-
-    glViewport(0, 0, 800, 600);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluPerspective(45.0, 800.0 / 600.0, 1.0, 1000.0);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-    setupLighting();
-
-    Simulation simulation;
-    std::vector<Vertex> solidVertices = {};
-    std::vector<Face> solidFaces = {};
-    std::vector<Particle> liquidParticles = {};
-    simulation.initialize(solidVertices, solidFaces, liquidParticles);
-
-    Renderer renderer;
+    Renderer renderer(config["render"]);
+    YAML::Node load_config = config["load"];
+    load_config["cwd"] = config["cwd"];
+    Simulation simulation(load_config);
 
     for (int _ = 0; _ < FPS * VIDEO_LENGTH; _++) {
         std::cout << "Generating frame " << _ << std::endl;
         simulation.update(1.0f / FPS);
-
-        std::vector<Vertex> solidMeshVertices;
-        std::vector<Face> solidMeshFaces;
-        simulation.getSolidMesh(solidMeshVertices, solidMeshFaces);
-
-        std::vector<Particle> updatedParticles;
-        simulation.getLiquidParticles(updatedParticles);
-
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         renderer.renderFloor();
-        renderer.renderMesh(solidMeshVertices, solidMeshFaces);
-        renderer.renderParticles(updatedParticles);
+        renderer.renderSimulation(simulation);
 
         std::string file_name = "./figures/frame_" + std::to_string(_) + ".png";
-        saveFrame(file_name, 800, 600);
+        saveFrame(file_name, config["render"]["windowsize"][0].as<int>(), config["render"]["windowsize"][1].as<int>());
 
         renderer.swapBuffers();
 

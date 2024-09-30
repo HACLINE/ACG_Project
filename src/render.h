@@ -2,14 +2,25 @@
 #define RENDER_H
 
 #include <vector>
+#include <yaml-cpp/yaml.h>
 #include "geometry.h"
+#include "env.h"
+#include "rigid_body.h"
+#include "fluid.h"
+
 
 // Renderer class
 class Renderer {
 public:
-    void renderMesh(const std::vector<Vertex>& vertices, const std::vector<Face>& faces);
+    Renderer(YAML::Node config);
 
-    void renderParticles(const std::vector<Particle>& particles);
+    void renderMesh(const Mesh&);
+    void renderParticles(const std::vector<Particle>&);
+
+    void renderRigidbody(const Rigidbody&);
+    void renderFluid(const Fluid&);
+
+    void renderSimulation(const Simulation&);
 
     void renderFloor();
 
