@@ -13,6 +13,8 @@ public:
     Fluid(const std::string& filename);
     ~Fluid();
 
+    void update(float dt);
+
     inline const std::vector<Particle>& getParticles() const { return particles_; }
 
 private:

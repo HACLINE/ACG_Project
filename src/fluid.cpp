@@ -22,3 +22,7 @@ Fluid::Fluid(const std::string& filename) {
     fin.close();
     std::cout << "[Load] Loaded " << particles_.size() << " particles from " << filename << std::endl;
 }
+
+void Fluid::update(float dt) {
+    return;
+}

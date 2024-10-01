@@ -1,17 +1,21 @@
 #include "rigid_body.h"
+#include "geometry.h"
+#include <glm/glm.hpp>
 
 #include <iostream>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
-Rigidbody::Rigidbody() {}
+glm::vec3 Rigidbody::gravity = glm::vec3(0.0f, -9.8f, 0.0f);
+
+Rigidbody::Rigidbody() : velocity_({0.0f, 0.0f, 0.0f}), mass_(1.0f) {}
 
 Rigidbody::~Rigidbody() {}
 
-Rigidbody::Rigidbody(const Mesh& mesh) : mesh_(mesh) {}
+Rigidbody::Rigidbody(const Mesh& mesh, const glm::vec3 velocity, const glm::vec3 acceleration, const float mass) : mesh_(mesh), velocity_(velocity), acceleration_(acceleration), mass_(mass) {}
 
-Rigidbody::Rigidbody(const std::string& filename) {
+Rigidbody::Rigidbody(const std::string& filename, const glm::vec3 velocity, const glm::vec3 acceleration, const float mass) : velocity_(velocity), acceleration_(acceleration), mass_(mass) {
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
@@ -50,4 +54,18 @@ Rigidbody::Rigidbody(const std::string& filename) {
     std::cout << "[Load] Loaded " << mesh_.faces.size() << " faces and " << mesh_.vertices.size()
                 << " vertices from " << filename << std::endl;
 
+}
+
+void Rigidbody::applyForce(const glm::vec3& force) {
+    acceleration_ += force / mass_;
+}
+
+void Rigidbody::update(float dt) {
+    // apply gravity
+    applyForce(gravity * mass_);
+
+    // update velocity and position
+    velocity_ += acceleration_ * dt;
+    mesh_translation(mesh_, velocity_ * dt);
+    acceleration_ = glm::vec3(0.0f);
 }

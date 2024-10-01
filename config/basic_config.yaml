@@ -28,4 +28,8 @@ load:
   fluid:
     path: /assets/fluid
     cfg: []
+
+video:
+  fps: 30
+  length: 2
 # here each cfg should be a list of list ex. [[test.obj], [test2.obj]]

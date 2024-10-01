@@ -1,3 +1,9 @@
+#### 2024.10.1 12:00
+by wxb
+Done:
+- Construct whole pipeline in main.cpp (make a video by combining frames in ./figures)
+- Add basic gravity forces on rigid bodies
+
 #### 2024.10.01 00:00
 by xqc
 Done:

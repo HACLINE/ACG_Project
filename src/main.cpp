@@ -7,12 +7,10 @@
 #include <limits.h>
 #include "render.h"
 #include "env.h"
+#include "genvideo.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
-
-#define FPS 60
-#define VIDEO_LENGTH 0.5
 
 void saveFrame(const std::string& filename, int width, int height) {
     std::vector<unsigned char> buffer(width * height * 3);
@@ -21,10 +19,20 @@ void saveFrame(const std::string& filename, int width, int height) {
     stbi_write_png(filename.c_str(), width, height, 3, buffer.data(), width * 3);
 }
 
+std::string intToString(int x, int len) {
+    std::string s = std::to_string(x);
+    while (s.size() < len) {
+        s = "0" + s;
+    }
+    return s;
+}
+
 /*
 ./main --config config.yaml
 */
 int main(int argc, char* argv[]) {
+
+    std::cout << "Starting simulation" << std::endl;
 
     // make args into a map
     std::map<std::string, std::string> args;
@@ -48,15 +56,20 @@ int main(int argc, char* argv[]) {
     load_config["cwd"] = config["cwd"];
     Simulation simulation(load_config);
 
+    int FPS = config["video"]["fps"].as<int>();
+    float VIDEO_LENGTH = config["video"]["length"].as<float>();
+
+    std::cout << "Generating images into ./figures ..." << std::endl;
+
     for (int _ = 0; _ < FPS * VIDEO_LENGTH; _++) {
-        std::cout << "Generating frame " << _ << std::endl;
+        std::cout.flush();
         simulation.update(1.0f / FPS);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         renderer.renderFloor();
         renderer.renderSimulation(simulation);
 
-        std::string file_name = "./figures/frame_" + std::to_string(_) + ".png";
+        std::string file_name = "./figures/frame_" + intToString(_, 6) + ".png";
         saveFrame(file_name, config["render"]["windowsize"][0].as<int>(), config["render"]["windowsize"][1].as<int>());
 
         renderer.swapBuffers();
@@ -66,6 +79,8 @@ int main(int argc, char* argv[]) {
             std::cerr << "OpenGL error: " << err << std::endl;
         }
     }
+
+    generateVideo(config["video"]);
 
     return 0;
 }

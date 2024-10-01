@@ -24,4 +24,10 @@ struct Mesh{
     std::vector<Face> faces;
 };
 
+inline void mesh_translation(Mesh& mesh, const glm::vec3& translation) {
+    for (auto& vertex : mesh.vertices) {
+        vertex.position += translation;
+    }
+}
+
 #endif

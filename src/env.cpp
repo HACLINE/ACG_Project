@@ -13,7 +13,7 @@ Simulation::Simulation(YAML::Node config) {
     for (int i = 0; i < config["fluid"]["cfg"].size(); ++i) {
         addFluid(Fluid(fluid_path + config["fluid"]["cfg"][i][0].as<std::string>()));
     }
-    std::cout<<rigidbodies_.size()<<std::endl;
+    // std::cout<<rigidbodies_.size()<<std::endl;
 }
 
 Simulation::~Simulation() {}
@@ -27,7 +27,12 @@ void Simulation::addFluid(const Fluid& fluid) {
 }
 
 void Simulation::update(float dt) {
-    return ;
+    for (int i = 0; i < rigidbodies_.size(); ++i) {
+        rigidbodies_[i].update(dt);
+    }
+    for (int i = 0; i < fluids_.size(); ++i) {
+        fluids_[i].update(dt);
+    }
 }
 
 const Rigidbody& Simulation::getRigidbody(int i) const{

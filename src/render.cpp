@@ -74,10 +74,10 @@ void Renderer::renderParticles(const std::vector<Particle>& particles) {
 void Renderer::renderFloor() {
     glBegin(GL_QUADS);
     glColor3f(0.8f, 0.8f, 0.8f);
-    glVertex3f(-100.0f, 0.0f, -100.0f);
-    glVertex3f( 100.0f, 0.0f, -100.0f);
-    glVertex3f( 100.0f, 0.0f,  100.0f);
-    glVertex3f(-100.0f, 0.0f,  100.0f);
+    glVertex3f(-100.0f, -10.0f, -100.0f);
+    glVertex3f( 100.0f, -10.0f, -100.0f);
+    glVertex3f( 100.0f, -10.0f,  100.0f);
+    glVertex3f(-100.0f, -10.0f,  100.0f);
     glEnd();
 }
 

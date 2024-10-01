@@ -11,3 +11,7 @@ load:
     cfg: [[test.obj]]
   fluid:
     cfg: [[test.fluid]]
+
+video:
+  fps: 30
+  length: 2
