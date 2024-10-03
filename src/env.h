@@ -15,19 +15,19 @@ class Simulation {
 
         void update(float dt);
 
-        void addRigidbody(const Rigidbody&);
-        void addFluid(const Fluid&);
+        void addRigidbody(Rigidbody*);
+        void addFluid(Fluid*);
 
         inline int getNumRigidbodies() const { return rigidbodies_.size(); }
         inline int getNumFluids() const { return fluids_.size(); }
-        const Rigidbody& getRigidbody(int i) const;
-        const Fluid& getFluid(int i) const;
-        inline const std::vector<Rigidbody>& getRigidbodies() const { return rigidbodies_; }
-        inline const std::vector<Fluid>& getFluids() const { return fluids_; }
+        Rigidbody* getRigidbody(int i) const;
+        Fluid* getFluid(int i) const;
+        inline const std::vector<Rigidbody*>& getRigidbodies() const { return rigidbodies_; }
+        inline const std::vector<Fluid*>& getFluids() const { return fluids_; }
     
     private:
-        std::vector<Rigidbody> rigidbodies_;
-        std::vector<Fluid> fluids_;
+        std::vector<Rigidbody*> rigidbodies_;
+        std::vector<Fluid*> fluids_;
 
         glm::vec3 gravity_;
         glm::vec3 box_min_, box_max_;

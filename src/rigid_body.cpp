@@ -9,7 +9,7 @@
 
 Rigidbody::~Rigidbody() {}
 
-Rigidbody::Rigidbody(const std::string& path, const YAML::Node& config) {
+Rigidbody::Rigidbody(const std::string& path, const YAML::Node& config, const std::string& type) {
     velocity_ = glm::vec3(config["velocity"][0].as<float>(), config["velocity"][1].as<float>(), config["velocity"][2].as<float>());
     acceleration_ = glm::vec3(config["acceleration"][0].as<float>(), config["acceleration"][1].as<float>(), config["acceleration"][2].as<float>());
     position_ = glm::vec3(config["position"][0].as<float>(), config["position"][1].as<float>(), config["position"][2].as<float>());
@@ -24,6 +24,7 @@ Rigidbody::Rigidbody(const std::string& path, const YAML::Node& config) {
 
     continuous_collision_ = 0;
     do_collision_ = false;
+    type_ = type;
 
     std::string filename = path + config["name"].as<std::string>();
     tinyobj::attrib_t attrib;
@@ -104,7 +105,7 @@ void Rigidbody::applyForce(const glm::vec3& force) {
     acceleration_ += force / mass_;
 }
 
-void Rigidbody::update(float dt) {
+void ImpulseBasedRigidbody::update(float dt) {
     // update velocity and position
     // std::cout << "position: " << position_.x << " " << position_.y << " " << position_.z << std::endl << "velocity: " << velocity_.x << " " << velocity_.y << " " << velocity_.z << std::endl << "acceleration: " << acceleration_.x << " " << acceleration_.y << " " << acceleration_.z << std::endl << "orientation: " << orientation_.x << " " << orientation_.y << " " << orientation_.z << std::endl << "angular_velocity: " << angular_velocity_.x << " " << angular_velocity_.y << " " << angular_velocity_.z << std::endl << "angular_acceleration: " << angular_acceleration_.x << " " << angular_acceleration_.y << " " << angular_acceleration_.z << std::endl << "velocity_buffer: " << velocity_buffer_.x << " " << velocity_buffer_.y << " " << velocity_buffer_.z << std::endl << "angular_velocity_buffer: " << angular_velocity_buffer_.x << " " << angular_velocity_buffer_.y << " " << angular_velocity_buffer_.z << std::endl;
     velocity_ += velocity_buffer_;
@@ -125,6 +126,6 @@ void Rigidbody::update(float dt) {
     do_collision_ = false;
 }
 
-float Rigidbody::restitution_schedule(float restitution) {
+float ImpulseBasedRigidbody::restitution_schedule(float restitution) {
     return restitution / (1.0f + log(continuous_collision_ + 1.0f));
 }

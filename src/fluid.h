@@ -10,7 +10,7 @@
 class Fluid {
 public:
     Fluid();
-    Fluid(const std::string&, const YAML::Node&);
+    Fluid(const std::string&, const YAML::Node&, const std::string&);
     ~Fluid();
 
     void update(float dt);
@@ -19,6 +19,8 @@ public:
 
 private:
     std::vector<Particle> particles_;
+
+    std::string type_;
 };
 
 #endif

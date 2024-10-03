@@ -1,3 +1,8 @@
+#### 2024.10.03 20:00
+by xqc
+Done:
+- Small modify on code structure. Now more convenient to implement different methods.
+
 #### 2024.10.03 15:00
 by xqc
 Done:

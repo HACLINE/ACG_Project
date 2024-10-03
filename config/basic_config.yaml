@@ -23,10 +23,12 @@ render:
 
 load:
   rigidbody:
+    type: impulse
     path: /assets/rigidbody
     cfg: []
     # [name, pos, scale]
   fluid:
+    type: base
     path: /assets/fluid
     cfg: []
 

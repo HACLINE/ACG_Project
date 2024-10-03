@@ -7,7 +7,7 @@
 
 class Rigidbody {
 public:
-    Rigidbody(const std::string&, const YAML::Node&);
+    Rigidbody(const std::string&, const YAML::Node&, const std::string&);
     ~Rigidbody();
 
     void applyGravity(const glm::vec3& gravity) { acceleration_ += gravity; }
@@ -32,17 +32,18 @@ public:
     glm::quat getOrientation() const { return orientation_; }
     glm::mat3 getInvInertia() const { return inv_inertia_; }
     float getMass() const { return mass_; }
+    std::string getType() const { return type_; }
 
     void addtoVelocityBuffer(const glm::vec3& velocity) { velocity_buffer_ += velocity; }
     void addtoAngularVelocityBuffer(const glm::vec3& angular_velocity) { angular_velocity_buffer_ += angular_velocity; }
     void doCollision() { do_collision_ = true; }
 
-    void update(float dt);
+    virtual void update(float) = 0;
     void resetContinuousCollision() { continuous_collision_ = 0; }
 
-    float restitution_schedule(float);
+    virtual float restitution_schedule(float) = 0;
 
-private:
+protected:
     Mesh mesh_;
     glm::vec3 velocity_, acceleration_, position_;
     glm::vec3 angular_velocity_, angular_acceleration_;
@@ -54,8 +55,19 @@ private:
 
     int continuous_collision_;
     bool do_collision_;
+    std::string type_;
 
     void initInertia(void);
+};
+
+class ImpulseBasedRigidbody : public Rigidbody {
+public:
+    ImpulseBasedRigidbody(const std::string& path, const YAML::Node& cfg, const std::string& type) : Rigidbody(path, cfg, type) {}
+
+    void update(float) override;
+    float restitution_schedule(float) override;
+private:
+
 };
 
 #endif

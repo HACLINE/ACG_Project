@@ -89,12 +89,12 @@ void Renderer::swapBuffers() {
     glutSwapBuffers();
 }
 
-void Renderer::renderRigidbody(const Rigidbody& rigidbody) {
-    renderMesh(rigidbody.getCurrentMesh());
+void Renderer::renderRigidbody(Rigidbody* rigidbody) {
+    renderMesh(rigidbody->getCurrentMesh());
 }
 
-void Renderer::renderFluid(const Fluid& fluid) {
-    renderParticles(fluid.getParticles());
+void Renderer::renderFluid(Fluid* fluid) {
+    renderParticles(fluid->getParticles());
 }
 
 void Renderer::renderSimulation(const Simulation& simulation) {

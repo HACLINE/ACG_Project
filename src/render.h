@@ -17,8 +17,8 @@ public:
     void renderMesh(const Mesh&);
     void renderParticles(const std::vector<Particle>&);
 
-    void renderRigidbody(const Rigidbody&);
-    void renderFluid(const Fluid&);
+    void renderRigidbody(Rigidbody*);
+    void renderFluid(Fluid*);
 
     void renderSimulation(const Simulation&);
 

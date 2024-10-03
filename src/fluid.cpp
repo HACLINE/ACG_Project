@@ -6,9 +6,10 @@ Fluid::Fluid() {}
 
 Fluid::~Fluid() {}
 
-Fluid::Fluid(const std::string& path, const YAML::Node& config) {
+Fluid::Fluid(const std::string& path, const YAML::Node& config, const std::string& type) {
     std::ifstream fin;
     std::string filename = path + config["name"].as<std::string>();
+    type_ = type;
     fin.open(filename);
     if (!fin) {
         std::cerr << "Failed to open file: " << filename << std::endl;

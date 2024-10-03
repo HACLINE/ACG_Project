@@ -9,10 +9,23 @@ Simulation::Simulation(YAML::Node load, YAML::Node physics) {
     std::string rigidbody_path = load["cwd"].as<std::string>() + load["rigidbody"]["path"].as<std::string>() + "/";
     std::string fluid_path = load["cwd"].as<std::string>() + load["fluid"]["path"].as<std::string>() + "/";
     for (int i = 0; i < load["rigidbody"]["cfg"].size(); ++i) {
-        addRigidbody(Rigidbody(rigidbody_path, load["rigidbody"]["cfg"][i]));
+        Rigidbody* rigidbody;
+        if (load["rigidbody"]["type"].as<std::string>() == "impulse") {
+            rigidbody = new ImpulseBasedRigidbody(rigidbody_path, load["rigidbody"]["cfg"][i], load["rigidbody"]["type"].as<std::string>());
+        } else {
+            std::cerr << "[Error] Invalid rigidtype" << std::endl;
+            exit(1);
+        }
+        addRigidbody(rigidbody);
     }
     for (int i = 0; i < load["fluid"]["cfg"].size(); ++i) {
-        addFluid(Fluid(fluid_path, load["fluid"]["cfg"][i]));
+        Fluid* fluid;
+        if (load["fluid"]["type"].as<std::string>() == "base") {
+            fluid = new Fluid(fluid_path, load["fluid"]["cfg"][i], load["fluid"]["type"].as<std::string>());
+        } else {
+            std::cerr << "[Error] Invalid fluidtype" << std::endl;
+            exit(1);
+        }
     }
 
     gravity_ = glm::vec3(physics["gravity"][0].as<float>(), physics["gravity"][1].as<float>(), physics["gravity"][2].as<float>());
@@ -24,18 +37,18 @@ Simulation::Simulation(YAML::Node load, YAML::Node physics) {
 
 Simulation::~Simulation() {}
 
-void Simulation::addRigidbody(const Rigidbody& rigidbody) {
+void Simulation::addRigidbody(Rigidbody* rigidbody) {
     rigidbodies_.push_back(rigidbody);
 }
 
-void Simulation::addFluid(const Fluid& fluid) {
+void Simulation::addFluid(Fluid* fluid) {
     fluids_.push_back(fluid);
 }
 
 void Simulation::update(float dt) {
     // Apply gravity
     for (int i = 0; i < rigidbodies_.size(); ++i) {
-        rigidbodies_[i].applyGravity(gravity_);
+        rigidbodies_[i]->applyGravity(gravity_);
     }
     // for (int i = 0; i < fluids_.size(); ++i) {
     //     fluids_[i].applyGravity(gravity_);
@@ -49,19 +62,19 @@ void Simulation::update(float dt) {
 
     // Last step
     for (int i = 0; i < rigidbodies_.size(); ++i) {
-        rigidbodies_[i].update(dt);
+        rigidbodies_[i]->update(dt);
     }
     for (int i = 0; i < fluids_.size(); ++i) {
-        fluids_[i].update(dt);
+        fluids_[i]->update(dt);
     }
 }
 
-const Rigidbody& Simulation::getRigidbody(int i) const{
+Rigidbody* Simulation::getRigidbody(int i) const{
     assert(i < rigidbodies_.size());
     return rigidbodies_[i];
 }
 
-const Fluid& Simulation::getFluid(int i) const{
+Fluid* Simulation::getFluid(int i) const{
     assert(i < fluids_.size());
     return fluids_[i];
 }
