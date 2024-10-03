@@ -8,10 +8,29 @@ render:
 
 load:
   rigidbody:
-    cfg: [[test.obj]]
+    cfg: 
+      - name: test.obj
+        scale: [2.0, 2.0, 2.0]
+        position: [0.0, 0.0, 0.0]
+        velocity: [0.0, 0.0, 0.0]
+        acceleration: [0.0, 0.0, 0.0]
+        orientation: [1.0, 0.0, 0.0, 0.0]
+        angular_velocity: [0.0, 0.0, 1.0]
+        angular_acceleration: [0.0, 0.0, 0.0]
+        mass: 5.0
+      # - name: square.obj
+      #   scale: [1.0, 1.0, 1.0]
+      #   position: [0.0, 0.0, 0.0]
+      #   velocity: [0.0, 0.0, 0.0]
+      #   acceleration: [0.0, 0.0, 0.0]
+      #   orientation: [1.0, 0.0, 0.0, 0.0]
+      #   angular_velocity: [0.0, 1.0, 1.0]
+      #   angular_acceleration: [0.0, 0.0, 0.0]
+      #   mass: 1.0
   fluid:
-    cfg: [[test.fluid]]
+    cfg: 
+      - name: test.fluid
 
 video:
   fps: 30
-  length: 2
+  length: 10

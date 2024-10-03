@@ -24,10 +24,9 @@ struct Mesh{
     std::vector<Face> faces;
 };
 
-inline void mesh_translation(Mesh& mesh, const glm::vec3& translation) {
-    for (auto& vertex : mesh.vertices) {
-        vertex.position += translation;
-    }
-}
+glm::mat3 cross_matrix(const glm::vec3&);
+glm::mat3 rotation_matrix(const glm::quat&);
+glm::vec3 transform(const glm::vec3&, const glm::vec3&, const glm::quat&);
+Mesh mesh_translation(Mesh, const glm::vec3&, const glm::quat&);
 
 #endif

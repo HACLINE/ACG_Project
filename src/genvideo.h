@@ -43,7 +43,7 @@ void generateVideo(YAML::Node config) {
     cv::VideoWriter videoWriter(outputVideoPath, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), fps, frameSize);
 
     if (!videoWriter.isOpened()) {
-        std::cerr << "Failed to open video path!" << std::endl;
+        std::cerr << "[Error] Failed to open video path!" << std::endl;
         return ;
     }
 
@@ -51,7 +51,7 @@ void generateVideo(YAML::Node config) {
     for (const auto& imageFile : imageFiles) {
         cv::Mat frame = cv::imread(imageFile);
         if (frame.empty()) {
-            std::cerr << "Failed to read image: " << imageFile << ". Continue to generate without it..." << std::endl;
+            std::cerr << "[Error] Failed to read image: " << imageFile << ". Continue to generate without it..." << std::endl;
             continue;
         }
         count++;
@@ -62,12 +62,12 @@ void generateVideo(YAML::Node config) {
     }
 
     if (count < frameCount) {
-        std::cerr << "WARNING: Image not enough: expected " << frameCount << ", but only have " << count << std::endl;
+        std::cerr << "[WARNING] Image not enough: expected " << frameCount << ", but only have " << count << std::endl;
     }
 
     videoWriter.release();
 
-    std::cout << "Video generated at: " << outputVideoPath << std::endl;
+    std::cout << "[Output] Video generated at: " << outputVideoPath << std::endl;
 
     return ;
 }

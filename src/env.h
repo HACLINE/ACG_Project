@@ -10,7 +10,7 @@
 class Simulation {
     public:
         Simulation();
-        Simulation(YAML::Node config);
+        Simulation(YAML::Node, YAML::Node);
         ~Simulation();
 
         void update(float dt);
@@ -28,6 +28,11 @@ class Simulation {
     private:
         std::vector<Rigidbody> rigidbodies_;
         std::vector<Fluid> fluids_;
+
+        glm::vec3 gravity_;
+        glm::vec3 box_min_, box_max_;
+
+        float restitution_, friction_;
 };
 
 #endif

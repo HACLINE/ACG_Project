@@ -1,4 +1,13 @@
-#### 2024.10.1 12:00
+#### 2024.10.03 15:00
+by xqc
+Done:
+- Rigid body collision with box, based on impulse method([Reference](https://www.aliyundrive.com/s/YGuzfDCzw4n/folder/61824d985307bbf3920044b4afd48abb633441f6))
+
+TODO:
+- Make it better
+- Move on
+
+#### 2024.10.01 12:00
 by wxb
 Done:
 - Construct whole pipeline in main.cpp (make a video by combining frames in ./figures)

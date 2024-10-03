@@ -3,14 +3,14 @@
 
 #include <vector>
 #include <string>
+#include <yaml-cpp/yaml.h>
 
 #include "geometry.h"
 
 class Fluid {
 public:
     Fluid();
-    Fluid(const std::vector<Particle>& particles);
-    Fluid(const std::string& filename);
+    Fluid(const std::string&, const YAML::Node&);
     ~Fluid();
 
     void update(float dt);

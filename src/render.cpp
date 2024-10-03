@@ -53,6 +53,10 @@ void Renderer::renderMesh(const Mesh& mesh) {
         const glm::vec3& v1 = mesh.vertices[face.v1].position;
         const glm::vec3& v2 = mesh.vertices[face.v2].position;
         const glm::vec3& v3 = mesh.vertices[face.v3].position;
+
+        glm::vec3 normal = glm::normalize(glm::cross(v2 - v1, v3 - v1));
+        glNormal3f(normal.x, normal.y, normal.z);
+
         glColor3f(0.0f, 0.8f, 0.2f);
         glVertex3f(v1.x, v1.y, v1.z);
         glVertex3f(v2.x, v2.y, v2.z);
@@ -86,7 +90,7 @@ void Renderer::swapBuffers() {
 }
 
 void Renderer::renderRigidbody(const Rigidbody& rigidbody) {
-    renderMesh(rigidbody.getMesh());
+    renderMesh(rigidbody.getCurrentMesh());
 }
 
 void Renderer::renderFluid(const Fluid& fluid) {

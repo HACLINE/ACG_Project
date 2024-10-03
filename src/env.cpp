@@ -1,19 +1,25 @@
 #include "env.h"
 #include <string>
 #include <iostream>
+#include "collision.h"
 
 Simulation::Simulation() {}
 
-Simulation::Simulation(YAML::Node config) {
-    std::string rigidbody_path = config["cwd"].as<std::string>() + config["rigidbody"]["path"].as<std::string>() + "/";
-    std::string fluid_path = config["cwd"].as<std::string>() + config["fluid"]["path"].as<std::string>() + "/";
-    for (int i = 0; i < config["rigidbody"]["cfg"].size(); ++i) {
-        addRigidbody(Rigidbody(rigidbody_path + config["rigidbody"]["cfg"][i][0].as<std::string>()));
+Simulation::Simulation(YAML::Node load, YAML::Node physics) {
+    std::string rigidbody_path = load["cwd"].as<std::string>() + load["rigidbody"]["path"].as<std::string>() + "/";
+    std::string fluid_path = load["cwd"].as<std::string>() + load["fluid"]["path"].as<std::string>() + "/";
+    for (int i = 0; i < load["rigidbody"]["cfg"].size(); ++i) {
+        addRigidbody(Rigidbody(rigidbody_path, load["rigidbody"]["cfg"][i]));
     }
-    for (int i = 0; i < config["fluid"]["cfg"].size(); ++i) {
-        addFluid(Fluid(fluid_path + config["fluid"]["cfg"][i][0].as<std::string>()));
+    for (int i = 0; i < load["fluid"]["cfg"].size(); ++i) {
+        addFluid(Fluid(fluid_path, load["fluid"]["cfg"][i]));
     }
-    // std::cout<<rigidbodies_.size()<<std::endl;
+
+    gravity_ = glm::vec3(physics["gravity"][0].as<float>(), physics["gravity"][1].as<float>(), physics["gravity"][2].as<float>());
+    box_min_ = glm::vec3(physics["box"]["min"][0].as<float>(), physics["box"]["min"][1].as<float>(), physics["box"]["min"][2].as<float>());
+    box_max_ = glm::vec3(physics["box"]["max"][0].as<float>(), physics["box"]["max"][1].as<float>(), physics["box"]["max"][2].as<float>());
+    restitution_ = physics["restitution"].as<float>();
+    friction_ = physics["friction"].as<float>();
 }
 
 Simulation::~Simulation() {}
@@ -27,6 +33,21 @@ void Simulation::addFluid(const Fluid& fluid) {
 }
 
 void Simulation::update(float dt) {
+    // Apply gravity
+    for (int i = 0; i < rigidbodies_.size(); ++i) {
+        rigidbodies_[i].applyGravity(gravity_);
+    }
+    // for (int i = 0; i < fluids_.size(); ++i) {
+    //     fluids_[i].applyGravity(gravity_);
+    // }
+
+    // Collision detection
+    for (int i = 0; i < rigidbodies_.size(); ++i) {
+        collision::rigidbody_box_collision(rigidbodies_[i], box_min_, box_max_, restitution_, friction_);
+    }
+
+
+    // Last step
     for (int i = 0; i < rigidbodies_.size(); ++i) {
         rigidbodies_[i].update(dt);
     }

@@ -32,7 +32,7 @@ std::string intToString(int x, int len) {
 */
 int main(int argc, char* argv[]) {
 
-    std::cout << "Starting simulation" << std::endl;
+    std::cout << "[main] Starting simulation" << std::endl;
 
     // make args into a map
     std::map<std::string, std::string> args;
@@ -54,19 +54,19 @@ int main(int argc, char* argv[]) {
     Renderer renderer(config["render"]);
     YAML::Node load_config = config["load"];
     load_config["cwd"] = config["cwd"];
-    Simulation simulation(load_config);
+    Simulation simulation(load_config, config["simulation"]);
 
     int FPS = config["video"]["fps"].as<int>();
     float VIDEO_LENGTH = config["video"]["length"].as<float>();
 
-    std::cout << "Generating images into ./figures ..." << std::endl;
+    std::cout << "[Generate] Generating images into ./figures ..." << std::endl;
 
     for (int _ = 0; _ < FPS * VIDEO_LENGTH; _++) {
         std::cout.flush();
         simulation.update(1.0f / FPS);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        renderer.renderFloor();
+        // renderer.renderFloor();
         renderer.renderSimulation(simulation);
 
         std::string file_name = "./figures/frame_" + intToString(_, 6) + ".png";
@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
 
         GLenum err;
         while ((err = glGetError()) != GL_NO_ERROR) {
-            std::cerr << "OpenGL error: " << err << std::endl;
+            std::cerr << "[Error] OpenGL error: " << err << std::endl;
         }
     }
 
