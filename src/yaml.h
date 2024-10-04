@@ -3,6 +3,7 @@
 
 #include <yaml-cpp/yaml.h>
 #include <fstream>
+#include <iostream>
 
 void merge_config(YAML::Node&, const YAML::Node&);
 
@@ -24,6 +25,12 @@ YAML::Node yaml_solver(const std::string filename, const std::string cwd) {
     YAML::Node merged_config = YAML::LoadFile(cwd + "/config/" + base);
     merge_config(merged_config, config);
     merged_config["cwd"] = YAML::Node(cwd);
+    YAML::Node fluid_config = YAML::LoadFile(cwd + "/config/" + merged_config["load"]["fluid"]["base"].as<std::string>());
+    for (int i = 0; i < merged_config["load"]["fluid"]["cfg"].size(); ++i) {
+        YAML::Node tmp = merged_config["load"]["fluid"]["cfg"][i];
+        merge_config(tmp, fluid_config);
+        merged_config["load"]["fluid"]["cfg"][i] = tmp;
+    }
     return merged_config;
 }
 

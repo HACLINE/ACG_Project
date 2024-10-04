@@ -15,8 +15,8 @@ struct Face {
 };
 
 struct Particle {
-    glm::vec3 position;
-    float radius;
+    glm::vec3 position, velocity, acceleration;
+    float radius, mass;
 };
 
 struct Mesh{

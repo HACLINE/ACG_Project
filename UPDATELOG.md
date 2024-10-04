@@ -1,3 +1,13 @@
+#### 2024.10.04 23:00
+by xqc
+Done:
+- [DFSPH](https://dl.acm.org/doi/abs/10.1145/2786784.2786796) fluid simulation (seems done, may debug after parallelization implemented)
+
+TODO:
+- Parallelization
+- Collision with rigidbody
+- Perhaps changes rigidbody to particles and deal with them together?
+
 #### 2024.10.03 20:00
 by xqc
 Done:

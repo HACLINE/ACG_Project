@@ -28,12 +28,14 @@ load:
     cfg: []
     # [name, pos, scale]
   fluid:
-    type: base
+    base: basic_DFSPH.yaml
+    type: DFSPH
     path: /assets/fluid
     cfg: []
 
 video:
   fps: 30
+  sps: 300 # steps per second
   length: 2
 
 simulation:
@@ -41,5 +43,5 @@ simulation:
   box: 
     min: [-8.0, -8.0, -8.0]
     max: [8.0, 8.0, 8.0]
-  restitution: 0.5
+  restitution: 0.2
   friction: 0.5

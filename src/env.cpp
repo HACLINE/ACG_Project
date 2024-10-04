@@ -20,12 +20,13 @@ Simulation::Simulation(YAML::Node load, YAML::Node physics) {
     }
     for (int i = 0; i < load["fluid"]["cfg"].size(); ++i) {
         Fluid* fluid;
-        if (load["fluid"]["type"].as<std::string>() == "base") {
-            fluid = new Fluid(fluid_path, load["fluid"]["cfg"][i], load["fluid"]["type"].as<std::string>());
+        if (load["fluid"]["type"].as<std::string>() == "DFSPH") {
+            fluid = new DFSPHFluid(fluid_path, load["fluid"]["cfg"][i], load["fluid"]["type"].as<std::string>());
         } else {
             std::cerr << "[Error] Invalid fluidtype" << std::endl;
             exit(1);
         }
+        addFluid(fluid);
     }
 
     gravity_ = glm::vec3(physics["gravity"][0].as<float>(), physics["gravity"][1].as<float>(), physics["gravity"][2].as<float>());
@@ -35,7 +36,14 @@ Simulation::Simulation(YAML::Node load, YAML::Node physics) {
     friction_ = physics["friction"].as<float>();
 }
 
-Simulation::~Simulation() {}
+Simulation::~Simulation() {
+    for (int i = 0; i < rigidbodies_.size(); ++i) {
+        delete rigidbodies_[i];
+    }
+    for (int i = 0; i < fluids_.size(); ++i) {
+        delete fluids_[i];
+    }
+}
 
 void Simulation::addRigidbody(Rigidbody* rigidbody) {
     rigidbodies_.push_back(rigidbody);
@@ -46,19 +54,23 @@ void Simulation::addFluid(Fluid* fluid) {
 }
 
 void Simulation::update(float dt) {
+    // char x;
+    // std::cin >> x;
     // Apply gravity
     for (int i = 0; i < rigidbodies_.size(); ++i) {
         rigidbodies_[i]->applyGravity(gravity_);
     }
-    // for (int i = 0; i < fluids_.size(); ++i) {
-    //     fluids_[i].applyGravity(gravity_);
-    // }
+    for (int i = 0; i < fluids_.size(); ++i) {
+        fluids_[i]->applyGravity(gravity_);
+    }
 
     // Collision detection
     for (int i = 0; i < rigidbodies_.size(); ++i) {
         collision::rigidbody_box_collision(rigidbodies_[i], box_min_, box_max_, restitution_, friction_);
     }
-
+    for (int i = 0; i < fluids_.size(); ++i) {
+        collision::fluid_box_collision(fluids_[i], box_min_, box_max_, restitution_, friction_);
+    }
 
     // Last step
     for (int i = 0; i < rigidbodies_.size(); ++i) {

@@ -57,13 +57,19 @@ int main(int argc, char* argv[]) {
     Simulation simulation(load_config, config["simulation"]);
 
     int FPS = config["video"]["fps"].as<int>();
+    int SPS = config["video"]["sps"].as<int>();
+    assert(SPS % FPS == 0);
     float VIDEO_LENGTH = config["video"]["length"].as<float>();
 
     std::cout << "[Generate] Generating images into ./figures ..." << std::endl;
 
-    for (int _ = 0; _ < FPS * VIDEO_LENGTH; _++) {
+    for (int _ = 0; _ < SPS * VIDEO_LENGTH; _++) {
         std::cout.flush();
-        simulation.update(1.0f / FPS);
+        simulation.update(1.0f / SPS);
+        if (_ % (SPS / FPS) != 0) {
+            continue;
+        }
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // renderer.renderFloor();

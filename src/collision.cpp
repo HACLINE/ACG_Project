@@ -70,3 +70,35 @@ void collision::rigidbody_box_collision(Rigidbody* rigidbody, const glm::vec3& b
     }
     
 }
+
+void collision::fluid_box_collision(Fluid* fluid, const glm::vec3& box_min, const glm::vec3& box_max, float restitution, float friction) {
+     glm::vec3 normal[6] = {
+        glm::vec3(1.0f, 0.0f, 0.0f),
+        glm::vec3(-1.0f, 0.0f, 0.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f),
+        glm::vec3(0.0f, -1.0f, 0.0f),
+        glm::vec3(0.0f, 0.0f, 1.0f),
+        glm::vec3(0.0f, 0.0f, -1.0f)
+    };
+    float bias[6] = {
+        -box_min.x,
+        box_max.x,
+        -box_min.y,
+        box_max.y,
+        -box_min.z,
+        box_max.z
+    };
+    std::vector<Particle>& particles = fluid->getParticles();
+    for (int i = 0; i < 6; ++i) {
+        for (int j = 0; j < particles.size(); ++j) {
+            if (glm::dot(particles[j].position, normal[i]) + bias[i] < 0.0f) {
+                particles[j].position += - (glm::dot(particles[j].position, normal[i]) + bias[i]) * normal[i];
+                if (glm::dot(particles[j].velocity, normal[i]) < 0.0f) {
+                    glm::vec3 vn = glm::dot(particles[j].velocity, normal[i]) * normal[i], vt = particles[j].velocity - vn;
+                    float a = 1.0f - friction * (1 + restitution) * glm::length(vn) / (glm::length(vt) + 1e-6f);
+                    fluid->addtoVelocityBuffer(-restitution * vn + (a > 0.0f ? friction * (1 + restitution) * glm::length(vn) / glm::length(vt) : 0.0f) * vt - particles[j].velocity, j);
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,6 @@
+kernel_radius: 0.04
+hash_table_size: 100
+max_iter: 1000
+max_iter_v: 1000
+max_density_error: 0.0001
+max_divergence_error: 0.001

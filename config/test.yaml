@@ -9,15 +9,15 @@ render:
 load:
   rigidbody:
     cfg: 
-      - name: test.obj
-        scale: [2.0, 2.0, 2.0]
-        position: [0.0, 0.0, 0.0]
-        velocity: [0.0, 0.0, 0.0]
-        acceleration: [0.0, 0.0, 0.0]
-        orientation: [1.0, 0.0, 0.0, 0.0]
-        angular_velocity: [0.0, 0.0, 1.0]
-        angular_acceleration: [0.0, 0.0, 0.0]
-        mass: 5.0
+      # - name: test.obj
+      #   scale: [2.0, 2.0, 2.0]
+      #   position: [0.0, 0.0, 0.0]
+      #   velocity: [0.0, 0.0, 0.0]
+      #   acceleration: [0.0, 0.0, 0.0]
+      #   orientation: [1.0, 0.0, 0.0, 0.0]
+      #   angular_velocity: [0.0, 0.0, 1.0]
+      #   angular_acceleration: [0.0, 0.0, 0.0]
+      #   mass: 5.0
       # - name: square.obj
       #   scale: [1.0, 1.0, 1.0]
       #   position: [0.0, 0.0, 0.0]
@@ -29,8 +29,16 @@ load:
       #   mass: 1.0
   fluid:
     cfg: 
-      - name: test.fluid
+      - init: cube # fromfile or cube
+        name: test.fluid # this required for fromfile
+        scale: [0.4, 0.8, 0.4]
+        num: [20, 40, 20]
+        radius: 0.01 # these three required for cube
+        mass: 6e-6
+        rho: 1000.0
+        
 
 video:
   fps: 30
+  sps: 30
   length: 10
