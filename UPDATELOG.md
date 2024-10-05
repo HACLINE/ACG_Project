@@ -1,3 +1,11 @@
+#### 2024.10.06 2:00
+by xqc
+Done:
+- Parallelization with CUDA, great speedup
+
+TODO:
+- Seems still some problem with fluid simulation. Maybe because of the interaction between fluid and box, which is written by me with reference to the rigidbody collision. Need debug but not today.
+
 #### 2024.10.04 23:00
 by xqc
 Done:

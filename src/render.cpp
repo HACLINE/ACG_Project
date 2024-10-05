@@ -2,7 +2,9 @@
 #include <iostream>
 #include <GL/glut.h> // Using OpenGL API
 
-Renderer::Renderer(YAML::Node config) {
+Renderer::Renderer(YAML::Node config) : config_(config) {}
+
+void Renderer::initializeOpenGL(YAML::Node config) {
     int argc = config["init"]["argc"].as<int>();
     char** argv = new char*[argc];
     for (int i = 0; i < argc; i++) {
@@ -103,5 +105,14 @@ void Renderer::renderSimulation(const Simulation& simulation) {
     }
     for (int i = 0; i < simulation.getNumFluids(); i++) {
         renderFluid(simulation.getFluid(i));
+    }
+}
+
+void Renderer::renderObject(const RenderObject& object) {
+    for (const auto& mesh : object.meshes) {
+        renderMesh(mesh);
+    }
+    for (const auto& particles : object.particles) {
+        renderParticles(particles);
     }
 }

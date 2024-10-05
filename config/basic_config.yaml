@@ -3,7 +3,7 @@ render:
     argc: 0
     argv: []
   camera:
-    eye: [15.0, 5.0, 15.0]
+    eye: [5.0, 3.0, 5.0]
     center: [0.0, 0.0, 0.0]
     up: [0.0, 1.0, 0.0]
   title: Basic
@@ -41,7 +41,11 @@ video:
 simulation:
   gravity: [0.0, -9.8, 0.0]
   box: 
-    min: [-8.0, -8.0, -8.0]
-    max: [8.0, 8.0, 8.0]
+    min: [-2.0, -2.0, -2.0]
+    max: [2.0, 2.0, 2.0]
   restitution: 0.2
   friction: 0.5
+
+cuda:
+  enabled: false
+  block_size: 512

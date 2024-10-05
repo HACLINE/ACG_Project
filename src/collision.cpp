@@ -3,7 +3,7 @@
 #include <iostream>
 
 //Impulse-based collision response
-void collision::rigidbody_box_collision(Rigidbody* rigidbody, const glm::vec3& box_min, const glm::vec3& box_max, float restitution, float friction) {
+void collision::rigidbody_box_collision(Rigidbody* rigidbody, const glm::vec3& box_min, const glm::vec3& box_max, float restitution, float friction, const YAML::Node& cuda) {
     if (rigidbody->getType() == "impulse") {
         Mesh mesh = rigidbody->getCurrentMesh();
         glm::vec3 position = rigidbody->getPosition();
@@ -71,7 +71,13 @@ void collision::rigidbody_box_collision(Rigidbody* rigidbody, const glm::vec3& b
     
 }
 
-void collision::fluid_box_collision(Fluid* fluid, const glm::vec3& box_min, const glm::vec3& box_max, float restitution, float friction) {
+void collision::fluid_box_collision(Fluid* fluid, const glm::vec3& box_min, const glm::vec3& box_max, float restitution, float friction, const YAML::Node& cuda) {
+#ifdef HAS_CUDA
+    if (cuda["enabled"].as<bool>()) {
+        fluid_box_collision_CUDA(fluid, box_min, box_max, restitution, friction, cuda);
+        return;
+    }
+#endif
      glm::vec3 normal[6] = {
         glm::vec3(1.0f, 0.0f, 0.0f),
         glm::vec3(-1.0f, 0.0f, 0.0f),

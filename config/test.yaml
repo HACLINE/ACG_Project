@@ -31,6 +31,8 @@ load:
     cfg: 
       - init: cube # fromfile or cube
         name: test.fluid # this required for fromfile
+        # scale: [1.0, 1.0, 1.0]
+        # num: [50, 50, 50]
         scale: [0.4, 0.8, 0.4]
         num: [20, 40, 20]
         radius: 0.01 # these three required for cube
@@ -41,4 +43,12 @@ load:
 video:
   fps: 30
   sps: 30
-  length: 10
+  length: 5
+
+simulation:
+  box: 
+    min: [-3.0, -2.0, -3.0]
+    max: [2.0, 2.0, 2.0]
+
+cuda:
+  enabled: true

@@ -10,7 +10,7 @@
 class Simulation {
     public:
         Simulation();
-        Simulation(YAML::Node, YAML::Node);
+        Simulation(YAML::Node, YAML::Node, YAML::Node);
         ~Simulation();
 
         void update(float dt);
@@ -18,12 +18,14 @@ class Simulation {
         void addRigidbody(Rigidbody*);
         void addFluid(Fluid*);
 
-        inline int getNumRigidbodies() const { return rigidbodies_.size(); }
-        inline int getNumFluids() const { return fluids_.size(); }
+        inline int getNumRigidbodies(void) const { return rigidbodies_.size(); }
+        inline int getNumFluids(void) const { return fluids_.size(); }
         Rigidbody* getRigidbody(int i) const;
         Fluid* getFluid(int i) const;
         inline const std::vector<Rigidbody*>& getRigidbodies() const { return rigidbodies_; }
         inline const std::vector<Fluid*>& getFluids() const { return fluids_; }
+
+        RenderObject getRenderObject(void);
     
     private:
         std::vector<Rigidbody*> rigidbodies_;
@@ -33,6 +35,8 @@ class Simulation {
         glm::vec3 box_min_, box_max_;
 
         float restitution_, friction_;
+
+        YAML::Node cuda_;
 };
 
 #endif

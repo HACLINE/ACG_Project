@@ -1,6 +1,9 @@
 #ifndef RENDER_H
 #define RENDER_H
 
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <vector>
 #include <yaml-cpp/yaml.h>
 #include "geometry.h"
@@ -13,6 +16,7 @@
 class Renderer {
 public:
     Renderer(YAML::Node config);
+    void initializeOpenGL(YAML::Node config);
 
     void renderMesh(const Mesh&);
     void renderParticles(const std::vector<Particle>&);
@@ -21,10 +25,14 @@ public:
     void renderFluid(Fluid*);
 
     void renderSimulation(const Simulation&);
+    void renderObject(const RenderObject&);
 
     void renderFloor();
 
     void swapBuffers(); // Swap front and back buffers
+
+private:
+    YAML::Node config_;
 };
 
 #endif

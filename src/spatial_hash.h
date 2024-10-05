@@ -6,6 +6,9 @@
 #include <utility>
 #include <cmath>
 #include <iostream>
+#ifdef HAS_CUDA
+#include <cuda_runtime.h>
+#endif
 
 #include "geometry.h"
 
@@ -39,6 +42,9 @@ public:
             insert(particles_[i], i);
         }
     }
+#ifdef HAS_CUDA
+    void updateAndGetNeighborsCUDA(Particle*, AugmentedParticle*, int, const int, const int);
+#endif
 
 private:
     float kernel_radius_;
@@ -47,5 +53,11 @@ private:
     std::vector<int>* hash_table_;
     const std::vector<Particle>& particles_;
 };
+
+#ifdef HAS_CUDA
+__global__ void hashTask(Particle*, int*, int*, const float, const int, const int);
+// __global__ void countNeighborsTask(Particle*, AugmentedParticle*, int**, const int, const float, const int, int*);
+__global__ void getNeighborsTask(Particle*, AugmentedParticle*, int**, const int, const float, const int, int*, const int);
+#endif
 
 #endif // SPATIAL_HASH_H

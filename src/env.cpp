@@ -5,7 +5,7 @@
 
 Simulation::Simulation() {}
 
-Simulation::Simulation(YAML::Node load, YAML::Node physics) {
+Simulation::Simulation(YAML::Node load, YAML::Node physics, YAML::Node cuda): cuda_(cuda) {
     std::string rigidbody_path = load["cwd"].as<std::string>() + load["rigidbody"]["path"].as<std::string>() + "/";
     std::string fluid_path = load["cwd"].as<std::string>() + load["fluid"]["path"].as<std::string>() + "/";
     for (int i = 0; i < load["rigidbody"]["cfg"].size(); ++i) {
@@ -21,7 +21,7 @@ Simulation::Simulation(YAML::Node load, YAML::Node physics) {
     for (int i = 0; i < load["fluid"]["cfg"].size(); ++i) {
         Fluid* fluid;
         if (load["fluid"]["type"].as<std::string>() == "DFSPH") {
-            fluid = new DFSPHFluid(fluid_path, load["fluid"]["cfg"][i], load["fluid"]["type"].as<std::string>());
+            fluid = new DFSPHFluid(fluid_path, load["fluid"]["cfg"][i], load["fluid"]["type"].as<std::string>(), cuda);
         } else {
             std::cerr << "[Error] Invalid fluidtype" << std::endl;
             exit(1);
@@ -64,20 +64,19 @@ void Simulation::update(float dt) {
         fluids_[i]->applyGravity(gravity_);
     }
 
-    // Collision detection
-    for (int i = 0; i < rigidbodies_.size(); ++i) {
-        collision::rigidbody_box_collision(rigidbodies_[i], box_min_, box_max_, restitution_, friction_);
-    }
-    for (int i = 0; i < fluids_.size(); ++i) {
-        collision::fluid_box_collision(fluids_[i], box_min_, box_max_, restitution_, friction_);
-    }
-
-    // Last step
     for (int i = 0; i < rigidbodies_.size(); ++i) {
         rigidbodies_[i]->update(dt);
     }
     for (int i = 0; i < fluids_.size(); ++i) {
         fluids_[i]->update(dt);
+    }
+    
+    // Collision detection
+    for (int i = 0; i < rigidbodies_.size(); ++i) {
+        collision::rigidbody_box_collision(rigidbodies_[i], box_min_, box_max_, restitution_, friction_, cuda_);
+    }
+    for (int i = 0; i < fluids_.size(); ++i) {
+        collision::fluid_box_collision(fluids_[i], box_min_, box_max_, restitution_, friction_, cuda_);
     }
 }
 
@@ -89,4 +88,15 @@ Rigidbody* Simulation::getRigidbody(int i) const{
 Fluid* Simulation::getFluid(int i) const{
     assert(i < fluids_.size());
     return fluids_[i];
+}
+
+RenderObject Simulation::getRenderObject(void) {
+    RenderObject render_object;
+    for (int i = 0; i < rigidbodies_.size(); ++i) {
+        render_object.meshes.push_back(rigidbodies_[i]->getCurrentMesh());
+    }
+    for (int i = 0; i < fluids_.size(); ++i) {
+        render_object.particles.push_back(fluids_[i]->getParticles());
+    }
+    return render_object;
 }
