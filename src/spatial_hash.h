@@ -15,7 +15,7 @@
 
 class SpatialHash {
 public:
-    SpatialHash();
+    SpatialHash(const std::vector<Particle>&);
     SpatialHash(float, int, const std::vector<Particle>&);
     ~SpatialHash();
 

@@ -1,21 +1,21 @@
 cmake_minimum_required(VERSION 3.10)
-project(ACG_Project LANGUAGES CXX CUDA)
+project(ACG_Project LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
-
-set(CMAKE_CUDA_ARCHITECTURES 86)
 
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLUT REQUIRED)
 find_package(glm REQUIRED)
-find_package(CUDAToolkit REQUIRED)
+find_package(CUDAToolkit)
 
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 if(CUDAToolkit_FOUND)
     add_definitions(-DHAS_CUDA)
+    set(CMAKE_CUDA_ARCHITECTURES 86)
+    enable_language(CUDA)
     file(GLOB_RECURSE CUDA_SOURCES "src/*.cu")
     list(APPEND SOURCES ${CUDA_SOURCES})
 endif()
