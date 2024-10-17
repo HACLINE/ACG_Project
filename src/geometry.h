@@ -6,6 +6,12 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
 
+#define STRUCTRAL_SPRING 1
+#define SHEAR_SPRING 2
+#define BEND_SPRING 3
+
+// const glm::vec3 GRAVITY = glm::vec3(0.0f,-9.81f,0.0f);
+
 struct Vertex {
     glm::vec3 position;
 };
@@ -17,6 +23,13 @@ struct Face {
 struct Particle {
     glm::vec3 position, velocity, acceleration;
     float radius, mass;
+};
+
+struct Spring {
+    int p1, p2;
+    float k_s, k_d;
+    float rest_length;
+    int type;
 };
 
 struct AugmentedParticle {
@@ -45,4 +58,6 @@ glm::mat3 cross_matrix(const glm::vec3&);
 glm::mat3 rotation_matrix(const glm::quat&);
 glm::vec3 transform(const glm::vec3&, const glm::vec3&, const glm::quat&);
 Mesh mesh_translation(Mesh, const glm::vec3&, const glm::quat&);
+
+glm::vec3 get_spring_force(const Spring&, const glm::vec3&, const glm::vec3&);
 #endif

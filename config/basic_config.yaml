@@ -32,6 +32,10 @@ load:
     type: DFSPH
     path: /assets/fluid
     cfg: []
+  cloth:
+    type: mass_spring
+    path: /assets/cloth
+    cfg: []
 
 video:
   fps: 30

@@ -23,6 +23,7 @@ public:
 
     void renderRigidbody(Rigidbody*);
     void renderFluid(Fluid*);
+    void renderCloth(Cloth*);
 
     void renderSimulation(const Simulation&);
     void renderObject(const RenderObject&);

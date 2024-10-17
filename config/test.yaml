@@ -29,21 +29,33 @@ load:
       #   mass: 1.0
   fluid:
     cfg: 
-      - init: cube # fromfile or cube
-        name: test.fluid # this required for fromfile
-        # scale: [1.0, 1.0, 1.0]
-        # num: [50, 50, 50]
-        scale: [0.4, 0.8, 0.4]
-        num: [20, 40, 20]
-        radius: 0.01 # these three required for cube
-        mass: 6e-6
-        rho: 1000.0
+      # - init: cube # fromfile or cube
+      #   name: test.fluid # this required for fromfile
+      #   # scale: [1.0, 1.0, 1.0]
+      #   # num: [50, 50, 50]
+      #   scale: [0.4, 0.8, 0.4]
+      #   num: [20, 40, 20]
+      #   radius: 0.01 # these three required for cube
+      #   mass: 6e-6
+      #   rho: 1000.0
+  cloth: 
+    cfg:
+      - init: square # fromfile or square
+        name: test.cloth
+        scale: [3, 3]
+        num: [20, 20]
+        height: 0
+        mass: 0.5
+        ks: [10., 5., 5.]
+        kd: [-2., -2., -2.]
+        damping: -0.0125
+
         
 
 video:
   fps: 30
   sps: 30
-  length: 5
+  length: 3
 
 simulation:
   box: 

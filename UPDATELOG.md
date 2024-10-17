@@ -1,4 +1,13 @@
-#### 2024.10.06 2:00
+### 2024.10.07 23:00
+by wxb
+Done:
+- basic code for cloth simulation: using mass-spring model
+
+TODO:
+- collision check with other objects
+- still need to optimize the simulation performance. It still looks bad :(
+
+### 2024.10.06 2:00
 by xqc
 Done:
 - Parallelization with CUDA, great speedup

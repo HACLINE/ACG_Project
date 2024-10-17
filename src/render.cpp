@@ -1,8 +1,8 @@
 #include "render.h"
 #include <iostream>
-#include <GL/glut.h> // Using OpenGL API
+#include <GLUT/glut.h> // Using OpenGL API
 
-Renderer::Renderer(YAML::Node config) : config_(config) {}
+Renderer::Renderer(YAML::Node config) : config_(config) { initializeOpenGL(config_); }
 
 void Renderer::initializeOpenGL(YAML::Node config) {
     int argc = config["init"]["argc"].as<int>();
@@ -99,12 +99,19 @@ void Renderer::renderFluid(Fluid* fluid) {
     renderParticles(fluid->getParticles());
 }
 
+void Renderer::renderCloth(Cloth* cloth) {
+    renderMesh(cloth->getMesh());
+}
+
 void Renderer::renderSimulation(const Simulation& simulation) {
     for (int i = 0; i < simulation.getNumRigidbodies(); i++) {
         renderRigidbody(simulation.getRigidbody(i));
     }
     for (int i = 0; i < simulation.getNumFluids(); i++) {
         renderFluid(simulation.getFluid(i));
+    }
+    for (int i = 0; i < simulation.getNumCloths(); i++) {
+        renderCloth(simulation.getCloth(i));
     }
 }
 
