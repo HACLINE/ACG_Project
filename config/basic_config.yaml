@@ -3,7 +3,7 @@ render:
     argc: 0
     argv: []
   camera:
-    eye: [5.0, 3.0, 5.0]
+    eye: [15.0, 9.0, 15.0]
     center: [0.0, 0.0, 0.0]
     up: [0.0, 1.0, 0.0]
   title: Basic

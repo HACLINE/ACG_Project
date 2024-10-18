@@ -18,8 +18,9 @@ public:
     void applyAcceleration(const glm::vec3& a) { for (int i = 0; i < num_particles_; ++i) particles_[i].acceleration += a; }
     void applyGravity(const glm::vec3& g) {applyAcceleration(g);}
     void applyDamping();
-    void applyForce(const glm::vec3& f, int i) { particles_[i].acceleration += f / particles_[i].mass; }
+    void applyForce(const glm::vec3& f, int i);
     void applyForce(const glm::vec3& f) { for (int i = 0; i < num_particles_; ++i) applyForce(f, i); }
+    void setFix(int ind, bool fixed);
 
     inline const std::vector<Particle>& getParticles() const { return particles_; }
     inline const int getNumParticles() const { return num_particles_; }

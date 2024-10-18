@@ -37,11 +37,11 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config) {
         fin.close();
         std::cout << "[Load] Cloth: Load " << particles_.size() << " particles, " << springs_.size() << " springs from " << filename << std::endl;
     } else if (config["init"].as<std::string>() == "square") {
-        float x_gap = config["scale"][0].as<float>() / config["num"][0].as<int>(),
-              z_gap = config["scale"][1].as<float>() / config["num"][1].as<int>();
+        int x_num = config["num"][0].as<int>(), z_num = config["num"][1].as<int>();
+        float x_gap = config["scale"][0].as<float>() / (x_num - 1),
+              z_gap = config["scale"][1].as<float>() / (z_num - 1);
         float slope_gap = sqrt(x_gap * x_gap + z_gap * z_gap);
         float mass = config["mass"].as<float>();
-        int x_num = config["num"][0].as<int>(), z_num = config["num"][1].as<int>();
         float x_start = - config["scale"][0].as<float>() / 2.0,
               z_start = - config["scale"][1].as<float>() / 2.0;
         float y_pos = config["height"].as<float>();
@@ -76,26 +76,27 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config) {
             for (int j = 0; j < z_num - 2; ++j) {
                 springs_.push_back(Spring{(i * z_num) + j, (i * z_num) + (j+2), config["ks"][2].as<float>(), config["kd"][2].as<float>(), z_gap + z_gap, BEND_SPRING});
             }
-            springs_.push_back(Spring{(i * z_num) + (z_num-3), (i * z_num) + (z_num-1), config["ks"][2].as<float>(), config["kd"][2].as<float>(), z_gap + z_gap, BEND_SPRING});
+            // springs_.push_back(Spring{(i * z_num) + (z_num-3), (i * z_num) + (z_num-1), config["ks"][2].as<float>(), config["kd"][2].as<float>(), z_gap + z_gap, BEND_SPRING});
         }
         for (int j = 0; j < z_num; ++j) {
             for (int i = 0; i < x_num - 2; ++i) {
                 springs_.push_back(Spring{(i * z_num) + j, ((i+2) * z_num) + j, config["ks"][2].as<float>(), config["kd"][2].as<float>(), x_gap + x_gap, BEND_SPRING});
             }
-            springs_.push_back(Spring{((x_num-3) * z_num) + j, ((x_num-1) * z_num) + j, config["ks"][2].as<float>(), config["kd"][2].as<float>(), x_gap + x_gap, BEND_SPRING});
+            // springs_.push_back(Spring{((x_num-3) * z_num) + j, ((x_num-1) * z_num) + j, config["ks"][2].as<float>(), config["kd"][2].as<float>(), x_gap + x_gap, BEND_SPRING});
         }
 
         // init faces
         for (int i = 0; i < x_num - 1; ++i) {
             for (int j = 0; j < z_num - 1; ++j) {
-                faces_.push_back(Face{(i * z_num) + j, ((i+1) * z_num) + j, ((i+1) * z_num) + (j+1)});
-                faces_.push_back(Face{((i+1) * z_num) + (j+1), (i * z_num) + j, (i * z_num) + (j+1)});
+                faces_.push_back(Face{((i+1) * z_num) + j, (i * z_num) + j, ((i+1) * z_num) + (j+1)});
+                faces_.push_back(Face{(i * z_num) + (j+1), ((i+1) * z_num) + (j+1), (i * z_num) + j});
             }
         }
 
         fixed_ = std::vector<bool>(particles_.size(), false);
-        for (int i = 0; i < z_num; ++i) fixed_[i] = fixed_[(x_num-1) * z_num + i] = true;
-        for (int i = 0; i < x_num; ++i) fixed_[i * z_num] = fixed_[i * z_num + (z_num-1)] = true;
+        // for (int i = 0; i < z_num; ++i) fixed_[i] = fixed_[(x_num-1) * z_num + i] = true;
+        // for (int i = 0; i < x_num; ++i) fixed_[i * z_num] = fixed_[i * z_num + (z_num-1)] = true;
+        fixed_[0] = fixed_[z_num - 1] = fixed_[particles_.size() - 1] = fixed_[particles_.size() - z_num] = true;
 
         std::cout << "[Load] Cloth: Load " << particles_.size() << " particles and " << springs_.size() << " springs" << std::endl;
     }
@@ -103,11 +104,23 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config) {
     num_particles_ = particles_.size();
     num_springs_ = springs_.size();
     num_faces_ = faces_.size();
+    damping_ = config["damping"].as<float>();
+}
+
+void Cloth::setFix(int ind, bool fixed) {
+    assert(num_particles_ > ind && ind >= 0);
+    fixed_[ind] = fixed;
+}
+
+void Cloth::applyForce(const glm::vec3& f, int i) {
+    if (!fixed_[i]) {
+        particles_[i].acceleration += f / particles_[i].mass;
+    }
 }
 
 void Cloth::applyDamping() {
     for (int i = 0; i < num_particles_; ++i) {
-        particles_[i].acceleration += damping_ * particles_[i].velocity / particles_[i].mass;
+        applyForce(damping_ * particles_[i].velocity, i);
     }
 }
 
@@ -117,17 +130,16 @@ void Cloth::update(float dt) {
     // Euler Integration
     for (int i = 0; i < num_particles_; ++i) {
         if (!fixed_[i]) {
-            particles_[i].position += particles_[i].velocity * dt;
             particles_[i].velocity += particles_[i].acceleration * dt;
+            particles_[i].position += particles_[i].velocity * dt;
         }
         particles_[i].acceleration = glm::vec3(0.0f);
     }
 
-    provotInverse();
+    // provotInverse();
 }
 
 void Cloth::computeForces() {
-    // applyGravity(GRAVITY);
     applyDamping();
 
     for (int i = 0; i < num_springs_; ++i) {
@@ -137,8 +149,8 @@ void Cloth::computeForces() {
                   v2 = particles_[springs_[i].p2].velocity;
         glm::vec3 spring_force = get_spring_force(springs_[i], p1 - p2, v1 - v2);
 
-        particles_[springs_[i].p1].acceleration += spring_force / particles_[springs_[i].p1].mass;
-        particles_[springs_[i].p2].acceleration -= spring_force / particles_[springs_[i].p2].mass;
+        applyForce(spring_force, springs_[i].p1);
+        applyForce(-spring_force, springs_[i].p2);
     }
 }
 
