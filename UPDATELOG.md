@@ -1,3 +1,12 @@
+### 2024.10.19 22:00
+by wxb
+Done:
+- Cloth: self-collision check
+- Cloth: collision with environment (wall)
+
+TODO:
+- Still have artifacts. Need debug.
+
 ### 2024.10.18 11:00
 by wxb
 Done:

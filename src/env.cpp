@@ -32,12 +32,28 @@ Simulation::Simulation(YAML::Node load, YAML::Node physics, YAML::Node cuda): cu
     for (int i = 0; i < load["cloth"]["cfg"].size(); ++i) {
         Cloth* cloth;
         if (load["cloth"]["type"].as<std::string>() == "mass_spring") {
-            cloth = new Cloth(cloth_path, load["cloth"]["cfg"][i]);
+            cloth = new Cloth(cloth_path, load["cloth"]["cfg"][i], load["cloth"]["kernel_radius"].as<float>(), load["cloth"]["hash_table_size"].as<int>());
         } else {
             std::cerr << "[Error] Invalid clothtype" << std::endl;
             exit(1);
         }
         addCloth(cloth);
+    }
+    for (int i = 0; i < load["wall"]["cfg"].size(); ++i) {
+        if (load["wall"]["cfg"][i]["type"].as<std::string>() == "triangle") {
+            Triangle* triangle = new Triangle{
+                glm::vec3(load["wall"]["cfg"][i]["pos1"][0].as<float>(), load["wall"]["cfg"][i]["pos1"][1].as<float>(), load["wall"]["cfg"][i]["pos1"][2].as<float>()),
+                glm::vec3(load["wall"]["cfg"][i]["pos2"][0].as<float>(), load["wall"]["cfg"][i]["pos2"][1].as<float>(), load["wall"]["cfg"][i]["pos2"][2].as<float>()),
+                glm::vec3(load["wall"]["cfg"][i]["pos3"][0].as<float>(), load["wall"]["cfg"][i]["pos3"][1].as<float>(), load["wall"]["cfg"][i]["pos3"][2].as<float>()),
+                load["wall"]["cfg"][i]["thickness"].as<float>(),
+                load["wall"]["cfg"][i]["restitution"].as<float>(),
+                load["wall"]["cfg"][i]["friction"].as<float>()
+            };
+            addWall(triangle);
+        } else {
+            std::cerr << "[Error] Invalid walltype" << std::endl;
+            exit(1);
+        }
     }
 
     gravity_ = glm::vec3(physics["gravity"][0].as<float>(), physics["gravity"][1].as<float>(), physics["gravity"][2].as<float>());
@@ -57,6 +73,9 @@ Simulation::~Simulation() {
     for (int i = 0; i < cloths_.size(); ++i) {
         delete cloths_[i];
     }
+    for (int i = 0; i < walls_.size(); ++i) {
+        delete walls_[i];
+    }
 }
 
 void Simulation::addRigidbody(Rigidbody* rigidbody) {
@@ -69,6 +88,10 @@ void Simulation::addFluid(Fluid* fluid) {
 
 void Simulation::addCloth(Cloth* cloth) {
     cloths_.push_back(cloth);
+}
+
+void Simulation::addWall(Triangle* tri) {
+    walls_.emplace_back(tri);
 }
 
 void Simulation::update(float dt) {
@@ -102,6 +125,12 @@ void Simulation::update(float dt) {
     for (int i = 0; i < fluids_.size(); ++i) {
         collision::fluid_box_collision(fluids_[i], box_min_, box_max_, restitution_, friction_, cuda_);
     }
+    for (int i = 0; i < cloths_.size(); ++i) { // Cloth-Wall collision
+        cloths_[i]->selfCollision();
+        for (int j = 0; j < walls_.size(); ++j) {
+            cloths_[i]->collisionWithTriangle(walls_[j], dt);
+        }
+    }
 }
 
 Rigidbody* Simulation::getRigidbody(int i) const {
@@ -117,6 +146,11 @@ Fluid* Simulation::getFluid(int i) const {
 Cloth* Simulation::getCloth(int i) const {
     assert(i < cloths_.size());
     return cloths_[i];
+}
+
+Triangle* Simulation::getWall(int i) const {
+    assert(i < walls_.size());
+    return walls_[i];
 }
 
 RenderObject Simulation::getRenderObject(void) {

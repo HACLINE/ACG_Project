@@ -36,6 +36,10 @@ load:
     type: mass_spring
     path: /assets/cloth
     cfg: []
+    kernel_radius: 0.04
+    hash_table_size: 100
+  wall:
+    cfg: []
 
 video:
   fps: 30

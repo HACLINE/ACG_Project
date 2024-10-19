@@ -5,7 +5,7 @@
 
 Cloth::~Cloth() {}
 
-Cloth::Cloth(const std::string& path, const YAML::Node& config) {
+Cloth::Cloth(const std::string& path, const YAML::Node& config, float kernel_radius, int hash_table_size): particles_(), hash_table_(kernel_radius, hash_table_size, particles_) {
     if (config["init"].as<std::string>() == "fromfile") {
         std::ifstream fin;
         std::string filename = path + config["name"].as<std::string>();
@@ -17,9 +17,9 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config) {
         int opt;
         while (fin >> opt) {
             if (opt == 0) { // particle
-                float x, y, z, m;
-                fin >> x >> y >> z >> m;
-                particles_.push_back(Particle{glm::vec3(x, y, z), glm::vec3(0.0f), glm::vec3(0.0f), m});
+                float x, y, z, r, m;
+                fin >> x >> y >> z >> r >> m;
+                particles_.push_back(Particle{glm::vec3(x, y, z), glm::vec3(0.0f), glm::vec3(0.0f), r, m});
             }
             else if (opt == 1) { // spring
                 float k_s, k_d, rest_length;
@@ -45,9 +45,10 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config) {
         float x_start = - config["scale"][0].as<float>() / 2.0,
               z_start = - config["scale"][1].as<float>() / 2.0;
         float y_pos = config["height"].as<float>();
+        float radius = config["radius"].as<float>();
         for (int i = 0; i < x_num; ++i) {
             for (int j = 0; j < z_num; ++j) {
-                particles_.push_back(Particle{glm::vec3(x_start + i * x_gap, y_pos, z_start + j * z_gap), glm::vec3(0.0f), glm::vec3(0.0f), 0.0f, mass});
+                particles_.push_back(Particle{glm::vec3(x_start + i * x_gap, y_pos, z_start + j * z_gap), glm::vec3(0.0f), glm::vec3(0.0f), radius, mass});
             }
         }
 
@@ -96,7 +97,8 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config) {
         fixed_ = std::vector<bool>(particles_.size(), false);
         // for (int i = 0; i < z_num; ++i) fixed_[i] = fixed_[(x_num-1) * z_num + i] = true;
         // for (int i = 0; i < x_num; ++i) fixed_[i * z_num] = fixed_[i * z_num + (z_num-1)] = true;
-        fixed_[0] = fixed_[z_num - 1] = fixed_[particles_.size() - 1] = fixed_[particles_.size() - z_num] = true;
+        // fixed_[0] = fixed_[z_num - 1] = fixed_[particles_.size() - 1] = fixed_[particles_.size() - z_num] = true;
+        fixed_[0] = fixed_[z_num - 1] = true;
 
         std::cout << "[Load] Cloth: Load " << particles_.size() << " particles and " << springs_.size() << " springs" << std::endl;
     }
@@ -105,6 +107,7 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config) {
     num_springs_ = springs_.size();
     num_faces_ = faces_.size();
     damping_ = config["damping"].as<float>();
+    std::cout << "KR: "<<kernel_radius<<", HTS: "<<hash_table_size<<", NP: "<<num_particles_<<std::endl;
 }
 
 void Cloth::setFix(int ind, bool fixed) {
@@ -124,6 +127,66 @@ void Cloth::applyDamping() {
     }
 }
 
+void Cloth::collisionWithTriangle(Triangle* tri, float dt) {
+    for (int i = 0; i < num_particles_; ++i) {
+        glm::vec3 p = particles_[i].position, v = particles_[i].velocity;
+        glm::vec3 n = glm::cross(tri->v2 - tri->v1, tri->v3 - tri->v1);
+        n = glm::normalize(n);
+        float dist = glm::dot(n, p - tri->v1), speed = - glm::dot(n, v);
+        if (dist < 0.0f) {
+            n = -n, dist = -dist, speed = -speed;
+        }
+        if (dist < tri->thickness) {
+            // correct position
+            particles_[i].position += (tri->thickness - dist) * n;
+        }
+        // if (speed > 0.0f) {
+        //     float t = dist / speed;
+        //     if (t < dt) { // have collision
+        //         glm::vec3 collision_point = p + particles_[i].velocity * t;
+        //         glm::vec3 normal_velocity = glm::dot(particles_[i].velocity, n) * n;
+        //         glm::vec3 tangential_velocity = particles_[i].velocity - normal_velocity;
+
+        //         glm::vec3 new_normal_velocity = - tri->restitution * normal_velocity;
+        //         glm::vec3 new_tangential_velocity = tangential_velocity * (1.0f - tri->friction);
+
+        //         particles_[i].velocity = new_normal_velocity + new_tangential_velocity;
+        //         // particles_[i].position = collision_point;
+        //     }
+        // }
+    }
+}
+
+void Cloth::collisionWithSphere(Sphere* sphere, float dt) {
+    ;
+}
+
+void Cloth::selfCollision() {
+    hash_table_.update();
+    int total_cnt = 0;
+    for (int i = 0; i < num_particles_; ++i) {
+        std::vector<int> neighbors;
+        hash_table_.getNeighbors(particles_[i].position, neighbors);
+        int cnt = 0;
+        glm::vec3 correction = glm::vec3(0.0f);
+        for (int j: neighbors) {
+            if (i == j) continue;
+            glm::vec3 r = particles_[i].position - particles_[j].position;
+            float dist = glm::length(r);
+            if (dist < particles_[i].radius + particles_[j].radius) {
+                glm::vec3 n = glm::normalize(r);
+                correction += (particles_[i].radius + particles_[j].radius - dist) * n;
+                cnt++;
+            }
+        }
+        if (cnt > 0) {
+            particles_[i].position += correction / float(cnt) / 5.0f;
+            total_cnt += cnt;
+        }
+    }
+    // std::cout << "Total collision: " << total_cnt << std::endl;
+}
+
 void Cloth::update(float dt) {
     computeForces();
 
@@ -135,8 +198,6 @@ void Cloth::update(float dt) {
         }
         particles_[i].acceleration = glm::vec3(0.0f);
     }
-
-    // provotInverse();
 }
 
 void Cloth::computeForces() {
@@ -151,21 +212,6 @@ void Cloth::computeForces() {
 
         applyForce(spring_force, springs_[i].p1);
         applyForce(-spring_force, springs_[i].p2);
-    }
-}
-
-void Cloth::provotInverse() {
-    for (int i = 0; i < num_springs_; ++i) {
-        glm::vec3 p1 = particles_[springs_[i].p1].position, 
-                    p2 = particles_[springs_[i].p2].position,
-                    dp = p1 - p2;
-        float dis = glm::length(dp);
-        if (dis > springs_[i].rest_length) {
-            dis = (dis - springs_[i].rest_length) / 2.0;
-            dp = glm::normalize(dp) * dis;
-            if (!fixed_[springs_[i].p1]) particles_[springs_[i].p1].velocity -= dp;
-            if (!fixed_[springs_[i].p2]) particles_[springs_[i].p2].velocity += dp;
-        }
     }
 }
 

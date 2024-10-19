@@ -4,15 +4,18 @@
 #include "geometry.h"
 #include <yaml-cpp/yaml.h>
 #include <string>
+#include "spatial_hash.h"
 
 class Cloth {
 public:
-    Cloth(const std::string& path, const YAML::Node& config);
+    Cloth(const std::string& path, const YAML::Node& config, float kernel_radius, int hash_table_size);
     ~Cloth();
 
     void update(float);
     void computeForces();
-    void provotInverse();
+    void collisionWithTriangle(Triangle*, float);
+    void collisionWithSphere(Sphere*, float);
+    void selfCollision();
 
     void applyAcceleration(const glm::vec3& a, int i) { particles_[i].acceleration += a; }
     void applyAcceleration(const glm::vec3& a) { for (int i = 0; i < num_particles_; ++i) particles_[i].acceleration += a; }
@@ -37,6 +40,7 @@ private:
     std::vector<Face> faces_;
 
     float damping_;
+    SpatialHash hash_table_;
 };
 
 #endif

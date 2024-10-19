@@ -24,6 +24,8 @@ public:
     void renderRigidbody(Rigidbody*);
     void renderFluid(Fluid*);
     void renderCloth(Cloth*);
+    void renderTriangle(Triangle*);
+    void renderSphere(Sphere*);
 
     void renderSimulation(const Simulation&);
     void renderObject(const RenderObject&);

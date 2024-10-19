@@ -5,12 +5,30 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
+#include <variant>
 
 #define STRUCTRAL_SPRING 1
 #define SHEAR_SPRING 2
 #define BEND_SPRING 3
 
-// const glm::vec3 GRAVITY = glm::vec3(0.0f,-9.81f,0.0f);
+// ENVIRONMENT GEOMETRIES
+struct Triangle {
+    glm::vec3 v1, v2, v3;
+    float thickness, restitution, friction;
+    
+    Triangle() = default;
+    Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, float thickness, float restitution, float friction): v1(v1), v2(v2), v3(v3), thickness(thickness), restitution(restitution), friction(friction) {}
+};
+
+struct Sphere {
+    glm::vec3 center;
+    float radius;
+
+    Sphere() = default;
+    Sphere(glm::vec3 center, float radius): center(center), radius(radius) {}
+};
+
+// END OF ENVIRONMENT GEOMETRIES
 
 struct Vertex {
     glm::vec3 position;
@@ -40,9 +58,6 @@ struct AugmentedParticle {
     int num_neighbors = 0;
 #endif
 };
-
-
-
 
 struct Mesh{
     std::vector<Vertex> vertices;

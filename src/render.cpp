@@ -78,13 +78,13 @@ void Renderer::renderParticles(const std::vector<Particle>& particles) {
 }
 
 void Renderer::renderFloor() {
-    glBegin(GL_QUADS);
-    glColor3f(0.8f, 0.8f, 0.8f);
-    glVertex3f(-100.0f, -10.0f, -100.0f);
-    glVertex3f( 100.0f, -10.0f, -100.0f);
-    glVertex3f( 100.0f, -10.0f,  100.0f);
-    glVertex3f(-100.0f, -10.0f,  100.0f);
-    glEnd();
+    // glBegin(GL_QUADS);
+    // glColor3f(0.8f, 0.8f, 0.8f);
+    // glVertex3f(-100.0f, -10.0f, -100.0f);
+    // glVertex3f( 100.0f, -10.0f, -100.0f);
+    // glVertex3f( 100.0f, -10.0f,  100.0f);
+    // glVertex3f(-100.0f, -10.0f,  100.0f);
+    // glEnd();
 }
 
 void Renderer::swapBuffers() {
@@ -103,6 +103,23 @@ void Renderer::renderCloth(Cloth* cloth) {
     renderMesh(cloth->getMesh());
 }
 
+void Renderer::renderTriangle(Triangle* triangle) {
+    glBegin(GL_TRIANGLES);
+    glColor3f(0.0f, 0.0f, 0.8f);
+    glVertex3f(triangle->v1.x, triangle->v1.y, triangle->v1.z);
+    glVertex3f(triangle->v2.x, triangle->v2.y, triangle->v2.z);
+    glVertex3f(triangle->v3.x, triangle->v3.y, triangle->v3.z);
+    glEnd();
+}
+
+void Renderer::renderSphere(Sphere* sphere) {
+    glPushMatrix();
+    glTranslatef(sphere->center.x, sphere->center.y, sphere->center.z);
+    glColor3f(0.0f, 0.0f, 0.8f);
+    glutSolidSphere(sphere->radius, 20, 20);
+    glPopMatrix();
+}
+
 void Renderer::renderSimulation(const Simulation& simulation) {
     for (int i = 0; i < simulation.getNumRigidbodies(); i++) {
         renderRigidbody(simulation.getRigidbody(i));
@@ -112,6 +129,9 @@ void Renderer::renderSimulation(const Simulation& simulation) {
     }
     for (int i = 0; i < simulation.getNumCloths(); i++) {
         renderCloth(simulation.getCloth(i));
+    }
+    for (int i = 0; i < simulation.getNumWalls(); i++) {
+        renderTriangle(simulation.getWall(i));
     }
 }
 
