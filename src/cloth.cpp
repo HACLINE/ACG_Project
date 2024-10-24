@@ -164,16 +164,15 @@ void Cloth::collisionWithTriangle(Triangle* tri, float dt) {
 }
 
 void Cloth::collisionWithSphere(Sphere* sphere, float dt) {
-/*
-auto direction = (pm.position - this->origin);
-  if(direction.norm()<=this->radius)
-  {
-      auto collision_point = this->origin + direction.unit() * this->radius;
-      auto correction = collision_point - pm.last_position;
-      pm.position = pm.last_position + (1-this->friction) * correction;
-  }
-*/
-    
+    for (int i = 0; i < num_particles_; ++i) {
+        glm::vec3 p = particles_[i].position;
+        glm::vec3 n = glm::normalize(p - sphere->center);
+        float dist = glm::length(p - sphere->center);
+        if (dist < sphere->radius) {
+            // correct position
+            particles_[i].position += (sphere->radius - dist) * n;
+        }
+    }
 }
 
 void Cloth::selfCollision() {

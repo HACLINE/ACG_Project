@@ -50,6 +50,12 @@ Simulation::Simulation(YAML::Node load, YAML::Node physics, YAML::Node cuda): cu
                 load["wall"]["cfg"][i]["friction"].as<float>()
             };
             addWall(triangle);
+        } else if (load["wall"]["cfg"][i]["type"].as<std::string>() == "sphere") {
+            Sphere* sphere = new Sphere{
+                glm::vec3(load["wall"]["cfg"][i]["center"][0].as<float>(), load["wall"]["cfg"][i]["center"][1].as<float>(), load["wall"]["cfg"][i]["center"][2].as<float>()),
+                load["wall"]["cfg"][i]["radius"].as<float>()
+            };
+            addSphere(sphere);
         } else {
             std::cerr << "[Error] Invalid walltype" << std::endl;
             exit(1);
@@ -94,6 +100,10 @@ void Simulation::addWall(Triangle* tri) {
     walls_.emplace_back(tri);
 }
 
+void Simulation::addSphere(Sphere* sphere) {
+    spheres_.emplace_back(sphere);
+}
+
 void Simulation::update(float dt) {
     // char x;
     // std::cin >> x;
@@ -130,6 +140,9 @@ void Simulation::update(float dt) {
         for (int j = 0; j < walls_.size(); ++j) {
             cloths_[i]->collisionWithTriangle(walls_[j], dt);
         }
+        for (int j = 0; j < spheres_.size(); ++j) {
+            cloths_[i]->collisionWithSphere(spheres_[j], dt);
+        }
     }
     // for (int i = 0; i < cloths_.size(); ++i) {
     //     cloths_[i]->selfCorrectSpring();
@@ -154,6 +167,11 @@ Cloth* Simulation::getCloth(int i) const {
 Triangle* Simulation::getWall(int i) const {
     assert(i < walls_.size());
     return walls_[i];
+}
+
+Sphere* Simulation::getSphere(int i) const {
+    assert(i < spheres_.size());
+    return spheres_[i];
 }
 
 RenderObject Simulation::getRenderObject(void) {
