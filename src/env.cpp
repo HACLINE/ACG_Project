@@ -131,6 +131,9 @@ void Simulation::update(float dt) {
             cloths_[i]->collisionWithTriangle(walls_[j], dt);
         }
     }
+    // for (int i = 0; i < cloths_.size(); ++i) {
+    //     cloths_[i]->selfCorrectSpring();
+    // }
 }
 
 Rigidbody* Simulation::getRigidbody(int i) const {

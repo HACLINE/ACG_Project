@@ -16,6 +16,7 @@ public:
     void collisionWithTriangle(Triangle*, float);
     void collisionWithSphere(Sphere*, float);
     void selfCollision();
+    void selfCorrectSpring();
 
     void applyAcceleration(const glm::vec3& a, int i) { particles_[i].acceleration += a; }
     void applyAcceleration(const glm::vec3& a) { for (int i = 0; i < num_particles_; ++i) particles_[i].acceleration += a; }
@@ -38,6 +39,8 @@ private:
     std::vector<bool> fixed_;
     std::vector<Spring> springs_;
     std::vector<Face> faces_;
+    std::vector<glm::vec3> prev_acceleration_;
+    std::vector<glm::vec3> force_buffer_;
 
     float damping_;
     SpatialHash hash_table_;

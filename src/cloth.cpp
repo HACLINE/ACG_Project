@@ -107,7 +107,11 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, float kernel_rad
     num_springs_ = springs_.size();
     num_faces_ = faces_.size();
     damping_ = config["damping"].as<float>();
-    std::cout << "KR: "<<kernel_radius<<", HTS: "<<hash_table_size<<", NP: "<<num_particles_<<std::endl;
+    for (int i = 0; i < num_particles_; ++i) {
+        force_buffer_.push_back(glm::vec3(0.0f));
+        prev_acceleration_.push_back(glm::vec3(0.0f));
+    }
+    // std::cout << "KR: "<<kernel_radius<<", HTS: "<<hash_table_size<<", NP: "<<num_particles_<<std::endl;
 }
 
 void Cloth::setFix(int ind, bool fixed) {
@@ -117,13 +121,15 @@ void Cloth::setFix(int ind, bool fixed) {
 
 void Cloth::applyForce(const glm::vec3& f, int i) {
     if (!fixed_[i]) {
-        particles_[i].acceleration += f / particles_[i].mass;
+        force_buffer_[i] += f;
     }
 }
 
 void Cloth::applyDamping() {
     for (int i = 0; i < num_particles_; ++i) {
-        applyForce(damping_ * particles_[i].velocity, i);
+        if (!fixed_[i]) {
+            particles_[i].velocity *= (1. - damping_);
+        }
     }
 }
 
@@ -158,7 +164,16 @@ void Cloth::collisionWithTriangle(Triangle* tri, float dt) {
 }
 
 void Cloth::collisionWithSphere(Sphere* sphere, float dt) {
-    ;
+/*
+auto direction = (pm.position - this->origin);
+  if(direction.norm()<=this->radius)
+  {
+      auto collision_point = this->origin + direction.unit() * this->radius;
+      auto correction = collision_point - pm.last_position;
+      pm.position = pm.last_position + (1-this->friction) * correction;
+  }
+*/
+    
 }
 
 void Cloth::selfCollision() {
@@ -187,16 +202,41 @@ void Cloth::selfCollision() {
     // std::cout << "Total collision: " << total_cnt << std::endl;
 }
 
+void Cloth::selfCorrectSpring() {
+    for (int i = 0; i < num_springs_; ++i) {
+        float dif = glm::length(particles_[springs_[i].p1].position - particles_[springs_[i].p2].position) - 1.1 * springs_[i].rest_length;
+        if (dif > 0) {
+            glm::vec3 correction = dif * glm::normalize(particles_[springs_[i].p1].position - particles_[springs_[i].p2].position);
+            if (fixed_[springs_[i].p1]) {
+                particles_[springs_[i].p2].position += correction;
+            } else if (fixed_[springs_[i].p2]) {
+                particles_[springs_[i].p1].position -= correction;
+            } else {
+                particles_[springs_[i].p1].position -= correction / 2.0f;
+                particles_[springs_[i].p2].position += correction / 2.0f;
+            }
+        }
+    }
+}
+
 void Cloth::update(float dt) {
     computeForces();
 
     // Euler Integration
     for (int i = 0; i < num_particles_; ++i) {
         if (!fixed_[i]) {
+            // std::cout << particles_[i].acceleration.y << " ";
+            // if (abs(particles_[i].velocity.y) > 20) exit(0);
+            particles_[i].acceleration += force_buffer_[i] / particles_[i].mass;
             particles_[i].velocity += particles_[i].acceleration * dt;
             particles_[i].position += particles_[i].velocity * dt;
+            // prev_acceleration_[i] = particles_[i].acceleration;
         }
-        particles_[i].acceleration = glm::vec3(0.0f);
+        if (fixed_[i]) {
+            particles_[i].velocity = glm::vec3(0.0f);
+            // prev_acceleration_[i] = glm::vec3(0.0f);
+        }
+        particles_[i].acceleration = force_buffer_[i] = glm::vec3(0.0f);
     }
 }
 

@@ -24,7 +24,9 @@ Mesh mesh_translation(Mesh mesh, const glm::vec3& translation, const glm::quat& 
 glm::vec3 get_spring_force(const Spring& spring, const glm::vec3& dP, const glm::vec3& dV) {
     float dis = glm::length(dP);
     float f_s = - spring.k_s * (dis - spring.rest_length);
-    float f_d = spring.k_d * (glm::dot(dP, dV) / dis);
+    float f_d = 0;//spring.k_d * (glm::dot(dP, dV) / dis);
+    // std::cout << "f_s: " << f_s << ", f_d: " << f_d << std::endl;
+    // if (abs(f_s) > 10) exit(0);
     glm::vec3 force = (f_s + f_d) * glm::normalize(dP);
     return force;
 }

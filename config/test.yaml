@@ -42,14 +42,14 @@ load:
     cfg:
       - init: square # fromfile or square
         name: test.cloth
-        scale: [15, 10]
-        num: [30, 20]
+        scale: [10, 10]
+        num: [20, 20]
         height: 5
         mass: 0.1
         radius: 0.02
-        ks: [200.0, 200.0, 60.0]
+        ks: [1000.0, 1000.0, 1000.0]
         kd: [0, 0, 0]
-        damping: -0.3
+        damping: 0.003
   wall:
     cfg:
       - type: triangle
@@ -86,7 +86,7 @@ load:
 video:
   fps: 20
   sps: 200
-  length: 15
+  length: 6
 
 simulation:
   box: 
