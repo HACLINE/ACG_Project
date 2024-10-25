@@ -6,19 +6,19 @@
 // applyAcceleration
 void Fluid::applyAccelerationCUDA(const glm::vec3& a) {
     int num_blocks = (num_particles_ + cuda_block_size_ - 1) / cuda_block_size_;
-    applyAccelerationTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, num_particles_, a);
+    DFSPHapplyAccelerationTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, num_particles_, a);
     CUDA_CHECK_ERROR(cudaDeviceSynchronize());
     CUDA_CHECK_ERROR(cudaGetLastError());
 }
 
-__global__ void applyAccelerationTask(Particle* cuda_particles_, int num_particles, const glm::vec3 a) {
+__global__ void DFSPHapplyAccelerationTask(Particle* cuda_particles_, int num_particles, const glm::vec3 a) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_particles) return;
     cuda_particles_[i].acceleration += a;
 }
 
 // kernel
-__device__ float W(const glm::vec3& r, float kernel_radius) {
+__device__ float DFSPHW(const glm::vec3& r, float kernel_radius) {
     float r_len = glm::length(r) / kernel_radius, k = 8.0f / (M_PI * kernel_radius * kernel_radius * kernel_radius);
     if (r_len < 0.5f) {
         return k * (6.0f * r_len * r_len * r_len - 6.0f * r_len * r_len + 1.0f);
@@ -29,7 +29,7 @@ __device__ float W(const glm::vec3& r, float kernel_radius) {
     }
 }
 
-__device__ glm::vec3 gradW(const glm::vec3& r, float kernel_radius) {
+__device__ glm::vec3 DFSPHgradW(const glm::vec3& r, float kernel_radius) {
     float r_len = glm::length(r) / kernel_radius, k = 8.0f / (M_PI * kernel_radius * kernel_radius * kernel_radius);
     if (r_len < 0.5f) {
         return k * (18.0f * r_len - 12.0f) / kernel_radius / kernel_radius * r;
@@ -43,12 +43,12 @@ __device__ glm::vec3 gradW(const glm::vec3& r, float kernel_radius) {
 // updateBuffer
 void DFSPHFluid::updateBufferCUDA(float dt) {
     int num_blocks = (num_particles_ + cuda_block_size_ - 1) / cuda_block_size_;
-    updateBufferTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, cuda_velocity_buffer_, num_particles_, dt, reflect_clip_);
+    DFSPHupdateBufferTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, cuda_velocity_buffer_, num_particles_, dt, reflect_clip_);
     CUDA_CHECK_ERROR(cudaDeviceSynchronize());
     CUDA_CHECK_ERROR(cudaGetLastError());
 }
 
-__global__ void updateBufferTask(Particle* cuda_particles_, glm::vec3* cuda_velocity_buffer_, int num_particles, float dt, float reflect_clip) {
+__global__ void DFSPHupdateBufferTask(Particle* cuda_particles_, glm::vec3* cuda_velocity_buffer_, int num_particles, float dt, float reflect_clip) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_particles) return;
     glm::vec3 delta_v =cuda_velocity_buffer_[i] + cuda_particles_[i].acceleration * dt;
@@ -63,12 +63,12 @@ __global__ void updateBufferTask(Particle* cuda_particles_, glm::vec3* cuda_velo
 // update position
 void DFSPHFluid::updatePositionCUDA(float dt) {
     int num_blocks = (num_particles_ + cuda_block_size_ - 1) / cuda_block_size_;
-    updatePositionTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, num_particles_, velocity_clip_, dt);
+    DFSPHupdatePositionTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, num_particles_, velocity_clip_, dt);
     CUDA_CHECK_ERROR(cudaDeviceSynchronize());
     CUDA_CHECK_ERROR(cudaGetLastError());
 }
 
-__global__ void updatePositionTask(Particle* cuda_particles_, int num_particles, float velocity_clip, float dt) {
+__global__ void DFSPHupdatePositionTask(Particle* cuda_particles_, int num_particles, float velocity_clip, float dt) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_particles) return;
     float len = glm::length(cuda_particles_[i].velocity);
@@ -81,31 +81,31 @@ __global__ void updatePositionTask(Particle* cuda_particles_, int num_particles,
 // computeDensity
 void DFSPHFluid::computeDensityCUDA() {
     int num_blocks = (num_particles_ + cuda_block_size_ - 1) / cuda_block_size_;
-    computeDensityTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, cuda_augmented_particles_, num_particles_, kernel_radius_);
+    DFSPHcomputeDensityTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, cuda_augmented_particles_, num_particles_, kernel_radius_);
     CUDA_CHECK_ERROR(cudaDeviceSynchronize());
     CUDA_CHECK_ERROR(cudaGetLastError());
 }
 
-__global__ void computeDensityTask(Particle* cuda_particles_, AugmentedParticle* cuda_augmented_particles_, int num_particles, float kernel_radius) {
+__global__ void DFSPHcomputeDensityTask(Particle* cuda_particles_, DFSPHAugmentedParticle* cuda_augmented_particles_, int num_particles, float kernel_radius) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_particles) return;
     cuda_augmented_particles_[i].rho = 0.0f;
     for (int j = 0; j < cuda_augmented_particles_[i].num_neighbors; ++j) {
         int neighbor = cuda_augmented_particles_[i].cuda_neighbors[j];
         glm::vec3 r = cuda_particles_[i].position - cuda_particles_[neighbor].position;
-        cuda_augmented_particles_[i].rho += cuda_particles_[neighbor].mass * W(r, kernel_radius);
+        cuda_augmented_particles_[i].rho += cuda_particles_[neighbor].mass * DFSPHW(r, kernel_radius);
     }
 }
 
 // computeAlpha
 void DFSPHFluid::computeAlphaCUDA() {
     int num_blocks = (num_particles_ + cuda_block_size_ - 1) / cuda_block_size_;
-    computeAlphaTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, cuda_augmented_particles_, num_particles_, kernel_radius_);
+    DFSPHcomputeAlphaTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, cuda_augmented_particles_, num_particles_, kernel_radius_);
     CUDA_CHECK_ERROR(cudaDeviceSynchronize());
     CUDA_CHECK_ERROR(cudaGetLastError());
 }
 
-__global__ void computeAlphaTask(Particle* cuda_particles_, AugmentedParticle* cuda_augmented_particles_, int num_particles, float kernel_radius) {
+__global__ void DFSPHcomputeAlphaTask(Particle* cuda_particles_, DFSPHAugmentedParticle* cuda_augmented_particles_, int num_particles, float kernel_radius) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_particles) return;
     float square_sum = 0.0f;
@@ -113,7 +113,7 @@ __global__ void computeAlphaTask(Particle* cuda_particles_, AugmentedParticle* c
     for (int j = 0; j < cuda_augmented_particles_[i].num_neighbors; ++j) {
         int neighbor = cuda_augmented_particles_[i].cuda_neighbors[j];
         glm::vec3 r = cuda_particles_[i].position - cuda_particles_[neighbor].position;
-        glm::vec3 grad = gradW(r, kernel_radius);
+        glm::vec3 grad = DFSPHgradW(r, kernel_radius);
         sum += cuda_particles_[neighbor].mass * grad;
         square_sum += cuda_particles_[neighbor].mass * cuda_particles_[neighbor].mass * glm::dot(grad, grad);
     }
@@ -131,7 +131,7 @@ float DFSPHFluid::computeRhoStarCUDA(float dt) {
     rho_avg = 0.0f;
     cudaMemcpy(p_rho_avg, &rho_avg, sizeof(float), cudaMemcpyHostToDevice);
     int num_blocks = (num_particles_ + cuda_block_size_ - 1) / cuda_block_size_;
-    computeRhoStarTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, cuda_augmented_particles_, num_particles_, kernel_radius_, rho0_, dt, p_rho_avg);
+    DFSPHcomputeRhoStarTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, cuda_augmented_particles_, num_particles_, kernel_radius_, rho0_, dt, p_rho_avg);
     CUDA_CHECK_ERROR(cudaDeviceSynchronize());
     CUDA_CHECK_ERROR(cudaGetLastError());
     cudaMemcpy(&rho_avg, p_rho_avg, sizeof(float), cudaMemcpyDeviceToHost);
@@ -139,14 +139,14 @@ float DFSPHFluid::computeRhoStarCUDA(float dt) {
     return rho_avg / num_particles_;
 }
 
-__global__ void computeRhoStarTask(Particle* cuda_particles_, AugmentedParticle* cuda_augmented_particles_, int num_particles, float kernel_radius, float rho0, float dt, float* p_rho_avg) {
+__global__ void DFSPHcomputeRhoStarTask(Particle* cuda_particles_, DFSPHAugmentedParticle* cuda_augmented_particles_, int num_particles, float kernel_radius, float rho0, float dt, float* p_rho_avg) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_particles) return;
     cuda_augmented_particles_[i].rho_star = cuda_augmented_particles_[i].rho / rho0;
     for (int j = 0; j < cuda_augmented_particles_[i].num_neighbors; ++j) {
         int neighbor = cuda_augmented_particles_[i].cuda_neighbors[j];
         glm::vec3 r = cuda_particles_[i].position - cuda_particles_[neighbor].position;
-        cuda_augmented_particles_[i].rho_star += dt * cuda_particles_[neighbor].mass * glm::dot(cuda_particles_[i].velocity - cuda_particles_[neighbor].velocity, gradW(r, kernel_radius));
+        cuda_augmented_particles_[i].rho_star += dt * cuda_particles_[neighbor].mass * glm::dot(cuda_particles_[i].velocity - cuda_particles_[neighbor].velocity, DFSPHgradW(r, kernel_radius));
     }
     cuda_augmented_particles_[i].rho_star = fmaxf(cuda_augmented_particles_[i].rho_star, 1.0f);
     atomicAdd(p_rho_avg, cuda_augmented_particles_[i].rho_star);
@@ -155,12 +155,12 @@ __global__ void computeRhoStarTask(Particle* cuda_particles_, AugmentedParticle*
 // computeKappa
 void DFSPHFluid::computeKappaCUDA(float dt) {
     int num_blocks = (num_particles_ + cuda_block_size_ - 1) / cuda_block_size_;
-    computeKappaTask<<<num_blocks, cuda_block_size_>>>(cuda_augmented_particles_, num_particles_, dt);
+    DFSPHcomputeKappaTask<<<num_blocks, cuda_block_size_>>>(cuda_augmented_particles_, num_particles_, dt);
     CUDA_CHECK_ERROR(cudaDeviceSynchronize());
     CUDA_CHECK_ERROR(cudaGetLastError());
 }
 
-__global__ void computeKappaTask(AugmentedParticle* cuda_augmented_particles_, int num_particles, float dt) {
+__global__ void DFSPHcomputeKappaTask(DFSPHAugmentedParticle* cuda_augmented_particles_, int num_particles, float dt) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_particles) return;
     cuda_augmented_particles_[i].kappa = cuda_augmented_particles_[i].alpha * (cuda_augmented_particles_[i].rho_star - 1.0f) / dt / dt;
@@ -172,7 +172,7 @@ float DFSPHFluid::computeRhoDerivativeCUDA(void) {
     cudaMalloc(&p_rho_divergence_avg, sizeof(float));
     cudaMemcpy(p_rho_divergence_avg, &rho_divergence_avg, sizeof(float), cudaMemcpyHostToDevice);
     int num_blocks = (num_particles_ + cuda_block_size_ - 1) / cuda_block_size_;
-    computeRhoDerivativeTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, cuda_augmented_particles_, num_particles_, kernel_radius_, p_rho_divergence_avg);
+    DFSPHcomputeRhoDerivativeTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, cuda_augmented_particles_, num_particles_, kernel_radius_, p_rho_divergence_avg);
     CUDA_CHECK_ERROR(cudaDeviceSynchronize());
     CUDA_CHECK_ERROR(cudaGetLastError());
     cudaMemcpy(&rho_divergence_avg, p_rho_divergence_avg, sizeof(float), cudaMemcpyDeviceToHost);
@@ -180,14 +180,14 @@ float DFSPHFluid::computeRhoDerivativeCUDA(void) {
     return rho_divergence_avg / num_particles_;
 }
 
-__global__ void computeRhoDerivativeTask(Particle* cuda_particles_, AugmentedParticle* cuda_augmented_particles_, int num_particles, float kernel_radius, float* p_rho_divergence_avg) {
+__global__ void DFSPHcomputeRhoDerivativeTask(Particle* cuda_particles_, DFSPHAugmentedParticle* cuda_augmented_particles_, int num_particles, float kernel_radius, float* p_rho_divergence_avg) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_particles) return;
     cuda_augmented_particles_[i].rho_derivative = 0.0f;
     for (int j = 0; j < cuda_augmented_particles_[i].num_neighbors; ++j) {
         int neighbor = cuda_augmented_particles_[i].cuda_neighbors[j];
         glm::vec3 r = cuda_particles_[i].position - cuda_particles_[neighbor].position;
-        cuda_augmented_particles_[i].rho_derivative += cuda_particles_[neighbor].mass * glm::dot(cuda_particles_[i].velocity - cuda_particles_[neighbor].velocity, gradW(r, kernel_radius));
+        cuda_augmented_particles_[i].rho_derivative += cuda_particles_[neighbor].mass * glm::dot(cuda_particles_[i].velocity - cuda_particles_[neighbor].velocity, DFSPHgradW(r, kernel_radius));
     }
     atomicAdd(p_rho_divergence_avg, cuda_augmented_particles_[i].rho_derivative);
 }
@@ -195,12 +195,12 @@ __global__ void computeRhoDerivativeTask(Particle* cuda_particles_, AugmentedPar
 // computeKappaV
 void DFSPHFluid::computeKappaVCUDA(float dt) {
     int num_blocks = (num_particles_ + cuda_block_size_ - 1) / cuda_block_size_;
-    computeKappaVTask<<<num_blocks, cuda_block_size_>>>(cuda_augmented_particles_, num_particles_, dt);
+    DFSPHcomputeKappaVTask<<<num_blocks, cuda_block_size_>>>(cuda_augmented_particles_, num_particles_, dt);
     CUDA_CHECK_ERROR(cudaDeviceSynchronize());
     CUDA_CHECK_ERROR(cudaGetLastError());
 }
 
-__global__ void computeKappaVTask(AugmentedParticle* cuda_augmented_particles_, int num_particles, float dt) {
+__global__ void DFSPHcomputeKappaVTask(DFSPHAugmentedParticle* cuda_augmented_particles_, int num_particles, float dt) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_particles) return;
     cuda_augmented_particles_[i].kappa = cuda_augmented_particles_[i].alpha * (cuda_augmented_particles_[i].rho_derivative) / dt;
@@ -209,18 +209,18 @@ __global__ void computeKappaVTask(AugmentedParticle* cuda_augmented_particles_, 
 // correctVelocityError
 void DFSPHFluid::correctVelocityErrorCUDA(float dt) {
     int num_blocks = (num_particles_ + cuda_block_size_ - 1) / cuda_block_size_;
-    correctVelocityErrorTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, cuda_augmented_particles_, num_particles_, kernel_radius_, dt);
+    DFSPHcorrectVelocityErrorTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, cuda_augmented_particles_, num_particles_, kernel_radius_, dt);
     CUDA_CHECK_ERROR(cudaDeviceSynchronize());
     CUDA_CHECK_ERROR(cudaGetLastError());
 }
 
-__global__ void correctVelocityErrorTask(Particle* cuda_particles_, AugmentedParticle* cuda_augmented_particles_, int num_particles, float kernel_radius, float dt) {
+__global__ void DFSPHcorrectVelocityErrorTask(Particle* cuda_particles_, DFSPHAugmentedParticle* cuda_augmented_particles_, int num_particles, float kernel_radius, float dt) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_particles) return;
     for (int j = 0; j < cuda_augmented_particles_[i].num_neighbors; ++j) {
         int neighbor = cuda_augmented_particles_[i].cuda_neighbors[j];
         glm::vec3 r = cuda_particles_[i].position - cuda_particles_[neighbor].position;
-        cuda_particles_[i].velocity -= dt * cuda_particles_[neighbor].mass * (cuda_augmented_particles_[i].kappa / cuda_augmented_particles_[i].rho + cuda_augmented_particles_[neighbor].kappa / cuda_augmented_particles_[neighbor].rho) * gradW(r, kernel_radius);
+        cuda_particles_[i].velocity -= dt * cuda_particles_[neighbor].mass * (cuda_augmented_particles_[i].kappa / cuda_augmented_particles_[i].rho + cuda_augmented_particles_[neighbor].kappa / cuda_augmented_particles_[neighbor].rho) * DFSPHgradW(r, kernel_radius);
     }
 }
 

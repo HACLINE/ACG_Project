@@ -6,6 +6,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
 #include <variant>
+#include <iostream>
 
 #define STRUCTRAL_SPRING 1
 #define SHEAR_SPRING 2
@@ -50,7 +51,7 @@ struct Spring {
     int type;
 };
 
-struct AugmentedParticle {
+struct DFSPHAugmentedParticle {
     float rho = 0.0f, alpha = 0.0f, kappa = 0.0f, rho_star = 0.0f, rho_derivative = 0.0f;
     std::vector<int> neighbors = {};
 #ifdef HAS_CUDA
@@ -67,6 +68,11 @@ struct Mesh{
 struct RenderObject {
     std::vector<Mesh> meshes;
     std::vector<std::vector<Particle>> particles;
+};
+
+struct Cell {
+    bool marker;
+    int start, end;
 };
 
 glm::mat3 cross_matrix(const glm::vec3&);

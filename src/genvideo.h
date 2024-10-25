@@ -10,8 +10,7 @@
 
 namespace fs = std::filesystem;
 
-void generateVideo(YAML::Node config) {
-    std::string figuresPath = "./figures";
+void generateVideo(YAML::Node config, const std::string& figuresPath) {
     std::string outputVideoPath = "video.avi";
     int fps = config["fps"].as<int>();
     float videoLength = config["length"].as<float>();

@@ -1,8 +1,12 @@
 #include "render.h"
 #include <iostream>
-#include <GLUT/glut.h> // Using OpenGL API
+#ifdef __linux__
+#include <GL/glut.h>
+#else
+#include <GLUT/glut.h>
+#endif
 
-Renderer::Renderer(YAML::Node config) : config_(config) { initializeOpenGL(config_); }
+Renderer::Renderer(YAML::Node config) : config_(config) {}
 
 void Renderer::initializeOpenGL(YAML::Node config) {
     int argc = config["init"]["argc"].as<int>();

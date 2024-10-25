@@ -1,5 +1,9 @@
 #include <yaml-cpp/yaml.h>
+#ifdef __linux__
+#include <GL/glut.h>
+#else
 #include <GLUT/glut.h>
+#endif
 #include <cassert>
 #include <iostream>
 #include <unistd.h>
@@ -39,6 +43,7 @@ std::queue<RenderObject> render_queue;
 std::mutex render_mutex;
 std::condition_variable render_cv;
 std::atomic<bool> done(false);
+std::string figuresPath = "/figures";
 
 void renderThread(Renderer& renderer, const YAML::Node& config, Simulation& simulation, int FPS, int SPS, int VIDEO_LENGTH) {
     renderer.initializeOpenGL(config["render"]);
@@ -64,7 +69,7 @@ void renderThread(Renderer& renderer, const YAML::Node& config, Simulation& simu
             // renderer.renderFloor();
             renderer.renderObject(render_object);
 
-            std::string file_name = "./figures/frame_" + intToString(frame, 6) + ".png";
+            std::string file_name = figuresPath + "/frame_" + intToString(frame, 6) + ".png";
             saveFrame(file_name, config["render"]["windowsize"][0].as<int>(), config["render"]["windowsize"][1].as<int>());
 
             renderer.swapBuffers();
@@ -79,7 +84,7 @@ void renderThread(Renderer& renderer, const YAML::Node& config, Simulation& simu
             last = std::chrono::high_resolution_clock::now();
         }
     }
-    generateVideo(config["video"]);
+    generateVideo(config["video"], figuresPath);
 }
 
 /*
@@ -105,6 +110,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     YAML::Node config = yaml_solver(args["config"], std::string(cwd));
+    std::string cwd_str = config["cwd"].as<std::string>();
+    // if cwd doesn't end up with '/build'
+    if (cwd_str.substr(cwd_str.size() - 5) != "/build") cwd_str += "/build";
+    figuresPath = cwd_str + figuresPath;
 
     if (!config["cuda"]["enabled"].as<bool>()) {
         std::cout << "[CUDA] CUDA disabled" << std::endl;
@@ -130,7 +139,7 @@ int main(int argc, char* argv[]) {
     assert(SPS % FPS == 0);
     float VIDEO_LENGTH = config["video"]["length"].as<float>();
 
-    std::cout << "[Generate] Generating images into ./figures ..." << std::endl;
+    std::cout << "[Generate] Generating images into " << figuresPath << " ..." << std::endl;
 
     std::thread render_thread(renderThread, std::ref(renderer), std::ref(config), std::ref(simulation), FPS, SPS, VIDEO_LENGTH);
 

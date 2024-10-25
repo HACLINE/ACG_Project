@@ -1,3 +1,12 @@
+### 2024.10.25 21:00
+by xqc
+Done:
+- Apply a Lagrangian-Eulerian fluid simulation. Notice that a discount factor on velocity is applied to avoid the instability of the simulation.
+
+TODO:
+- Coupling.
+
+
 ### 2024.10.19 22:00
 by wxb
 Done:

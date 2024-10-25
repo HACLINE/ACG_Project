@@ -6,3 +6,4 @@ out
 bin
 figures
 config/_*.yaml
+*.avi

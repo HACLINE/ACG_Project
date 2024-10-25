@@ -53,6 +53,8 @@ simulation:
     max: [2.0, 2.0, 2.0]
   restitution: 0.2
   friction: 0.5
+  resolution: [40, 40, 40]
+  wall_thickness: 0.005
 
 cuda:
   enabled: false

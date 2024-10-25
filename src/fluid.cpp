@@ -1,4 +1,5 @@
 #include "fluid.h"
+
 #include <fstream>
 #include <iostream>
 #include <chrono>
@@ -67,7 +68,7 @@ void Fluid::applyAcceleration(const glm::vec3& a) {
         for (int i = 0; i < particles_.size(); ++i) particles_[i].acceleration += a;
     }
 
-DFSPHFluid::DFSPHFluid(const std::string& path, const YAML::Node& config, const std::string& type, const YAML::Node& cuda): Fluid(path, config, type, cuda), spatial_hash_(config["kernel_radius"].as<float>(), config["hash_table_size"].as<int>(), particles_) {
+DFSPHFluid::DFSPHFluid(const std::string& path, const YAML::Node& config, const std::string& type, const YAML::Node& physics, const YAML::Node& cuda): Fluid(path, config, type, cuda), spatial_hash_(config["kernel_radius"].as<float>(), config["hash_table_size"].as<int>(), particles_) {
     kernel_radius_ = config["kernel_radius"].as<float>();
     hash_table_size_ = config["hash_table_size"].as<int>();
     augmented_particles_.resize(particles_.size());
@@ -88,8 +89,8 @@ DFSPHFluid::DFSPHFluid(const std::string& path, const YAML::Node& config, const 
         for (int i = 0; i < particles_.size(); ++i) {
             cudaMalloc(&augmented_particles_[i].cuda_neighbors, neighborhood_size_ * sizeof(int));
         }
-        cudaMalloc(&cuda_augmented_particles_, augmented_particles_.size() * sizeof(AugmentedParticle));
-        cudaMemcpy(cuda_augmented_particles_, augmented_particles_.data(), augmented_particles_.size() * sizeof(AugmentedParticle), cudaMemcpyHostToDevice);
+        cudaMalloc(&cuda_augmented_particles_, augmented_particles_.size() * sizeof(DFSPHAugmentedParticle));
+        cudaMemcpy(cuda_augmented_particles_, augmented_particles_.data(), augmented_particles_.size() * sizeof(DFSPHAugmentedParticle), cudaMemcpyHostToDevice);
         spatial_hash_.updateAndGetNeighborsCUDA(cuda_particles_, cuda_augmented_particles_, num_particles_, hash_table_size_, neighborhood_size_);
         computeDensityCUDA();
         computeAlphaCUDA();
@@ -324,4 +325,294 @@ void DFSPHFluid::update(float dt) {
         // std::cout << "memcpy: " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << std::endl;
     }
 #endif
+}
+
+PICFLIPFluid::PICFLIPFluid(const std::string& path, const YAML::Node& config, const std::string& type, const YAML::Node& physics, const YAML::Node& cuda): Fluid(path, config, type, cuda) {
+    grid_ = new PICFLIPGrid(physics);
+    vel_grid_ = new VecGrid<glm::vec4>(physics);
+    buffer_vel_grid_ = new VecGrid<glm::vec4>(physics);
+    orig_vel_grid_ = new VecGrid<glm::vec4>(physics);
+    divergence_grid_ = new VecGrid<float>(physics);
+    pressure_grid_ = new VecGrid<float>(physics);
+    buffer_pressure_grid_ = new VecGrid<float>(physics);
+
+    particles_per_cell_ = config["particles_per_cell"].as<float>();
+    jacobi_iters_ = config["jacobi_iters"].as<int>();
+    flipness_ = config["flipness"].as<float>();
+    scheduler_scale_ = config["scheduler_scale"].as<float>();
+    scheduler_temperature_ = config["scheduler_temperature"].as<float>();
+    vel_discount_ = config["vel_discount"].as<float>();
+
+    sortParticles();
+}
+
+PICFLIPFluid::~PICFLIPFluid() {
+    delete grid_;
+    delete vel_grid_;
+    delete buffer_vel_grid_;
+    delete orig_vel_grid_;
+    delete divergence_grid_;
+    delete pressure_grid_;
+    delete buffer_pressure_grid_;
+}
+
+template <class T> T PICFLIPFluid::interpolate(const VecGrid<T>* grid, const glm::vec3& pos) {
+    T result = T(0.0f);
+    glm::ivec3 cell = glm::ivec3(pos);
+    glm::vec3 weight = pos - glm::vec3(cell);
+    glm::vec3 weights[2] = {glm::vec3(1.0f) - weight, weight};
+    glm::ivec3 offset;
+    for (offset.x = 0; offset.x < 2; ++offset.x)
+    for (offset.y = 0; offset.y < 2; ++offset.y)
+    for (offset.z = 0; offset.z < 2; ++offset.z) {
+        result += weights[offset.x].x * weights[offset.y].y * weights[offset.z].z * grid->cvec(cell + offset);
+    }
+    // std::cout << "cell: " << cell << " pos: " << pos << " result: " << result << std::endl;
+    return result;
+}
+
+template <class T> glm::vec3 PICFLIPFluid::sampleVelocity(const VecGrid<T>* grid, const glm::vec3& pos) {
+    glm::vec3 vel;
+    vel.x = interpolate(grid, pos - glm::vec3(0.0f, 0.5f, 0.5f)).x;
+    vel.y = interpolate(grid, pos - glm::vec3(0.5f, 0.0f, 0.5f)).y;
+    vel.z = interpolate(grid, pos - glm::vec3(0.5f, 0.5f, 0.0f)).z;
+    return vel;
+}
+
+float PICFLIPFluid::scheduler(float t) {
+    if (t < 0.0f) return 0.0f;
+    float ret;
+    // ret = scheduler_scale_ / (1.0f + exp(- t / scheduler_temperature_));
+    ret = scheduler_temperature_ * t;
+    ret = (ret > scheduler_scale_) ? scheduler_scale_ : ret;
+    return ret;
+}
+
+void PICFLIPFluid::sortParticles() {
+    std::vector<int> *cell_particles = new std::vector<int>[grid_->config_.resolution.x * grid_->config_.resolution.y * grid_->config_.resolution.z];
+    for (int i = 0; i < particles_.size(); ++i) {
+        glm::ivec3 grid_pos = grid_->worldToGridInt(particles_[i].position);
+        int cell_id = grid_pos.x + grid_pos.y * grid_->config_.resolution.x + grid_pos.z * grid_->config_.resolution.x * grid_->config_.resolution.y;
+        cell_particles[cell_id].push_back(i);
+    }
+    int cnt = 0;
+    std::vector<Particle> sorted_particles;
+    for (int i = 0; i < grid_->config_.resolution.x * grid_->config_.resolution.y * grid_->config_.resolution.z; ++i) {
+        grid_->cells_[i].start = cnt;
+        for (int j = 0; j < cell_particles[i].size(); ++j) {
+            sorted_particles.push_back(particles_[cell_particles[i][j]]);
+            ++cnt;
+        }
+        grid_->cells_[i].end = cnt;
+    }
+    particles_ = sorted_particles;
+    delete[] cell_particles;
+}
+
+void PICFLIPFluid::transferToGrid() {
+    glm::ivec3 resolution = grid_->config_.resolution;
+    glm::ivec3 offset, cell;
+    for (cell.x = 0; cell.x < resolution.x; ++cell.x)
+    for (cell.y = 0; cell.y < resolution.y; ++cell.y)
+    for (cell.z = 0; cell.z < resolution.z; ++cell.z) {
+        glm::vec4 weight(0.0f);
+        for (offset.x = cell.x - 1 > 0 ? cell.x - 1 : 0; offset.x <= cell.x + 1 && offset.x < resolution.x; ++offset.x)
+        for (offset.y = cell.y - 1 > 0 ? cell.y - 1 : 0; offset.y <= cell.y + 1 && offset.y < resolution.y; ++offset.y)
+        for (offset.z = cell.z - 1 > 0 ? cell.z - 1 : 0; offset.z <= cell.z + 1 && offset.z < resolution.z; ++offset.z) {
+            int start = grid_->cell(offset).start;
+            int end = grid_->cell(offset).end;
+            for (int i = start; i < end; ++i) {
+                glm::vec3 vel = particles_[i].velocity;
+                glm::vec3 pos = grid_->worldToGrid(particles_[i].position) - glm::vec3(cell);
+                glm::vec4 cur_weight = glm::vec4(
+                    k(pos - glm::vec3(0.0f, 0.5f, 0.5f)), 
+                    k(pos - glm::vec3(0.5f, 0.0f, 0.5f)), 
+                    k(pos - glm::vec3(0.5f, 0.5f, 0.0f)), 
+                    k(pos - glm::vec3(0.5f, 0.5f, 0.5f))
+                );
+                // std::cout<<cur_weight<<std::endl;
+                vel_grid_->vec(cell).x += cur_weight.x * vel.x;
+                vel_grid_->vec(cell).y += cur_weight.y * vel.y;
+                vel_grid_->vec(cell).z += cur_weight.z * vel.z;
+                weight += cur_weight;
+            }
+        }
+        vel_grid_->vec(cell).x = (weight.x > 1e-6f) ? vel_grid_->vec(cell).x / weight.x : 0.0f;
+        vel_grid_->vec(cell).y = (weight.y > 1e-6f) ? vel_grid_->vec(cell).y / weight.y : 0.0f;
+        vel_grid_->vec(cell).z = (weight.z > 1e-6f) ? vel_grid_->vec(cell).z / weight.z : 0.0f;
+
+        vel_grid_->vec(cell).w = weight.w;
+        // if (weight.w >  1e-6f)
+        // std::cout << "cell: " << cell << " vel: " << vel_grid_->vec(cell) << std::endl;
+
+        orig_vel_grid_->vec(cell) = vel_grid_->vec(cell);
+    }
+}
+
+void PICFLIPFluid::marker() {
+    glm::ivec3 resolution = grid_->config_.resolution;
+    glm::ivec3 cell;
+    for (cell.x = 0; cell.x < resolution.x; ++cell.x)
+    for (cell.y = 0; cell.y < resolution.y; ++cell.y)
+    for (cell.z = 0; cell.z < resolution.z; ++cell.z) {
+        grid_->cell(cell).marker = bool(grid_->cell(cell).end - grid_->cell(cell).start > 0);
+    }
+}
+
+void PICFLIPFluid::addForce(const glm::vec3& a, float dt) {
+    glm::ivec3 resolution = grid_->config_.resolution;
+    glm::ivec3 cell;
+    for (cell.x = 0; cell.x < resolution.x; ++cell.x)
+    for (cell.y = 0; cell.y < resolution.y; ++cell.y)
+    for (cell.z = 0; cell.z < resolution.z; ++cell.z) { 
+        vel_grid_->vec(cell).x += a.x * dt;
+        vel_grid_->vec(cell).y += a.y * dt;
+        vel_grid_->vec(cell).z += a.z * dt;
+        if (cell.x == 0 || cell.x == resolution.x - 1) vel_grid_->vec(cell).x = 0.0f;
+        if (cell.z == 0 || cell.z == resolution.z - 1) vel_grid_->vec(cell).z = 0.0f;
+        if (cell.y == 0) vel_grid_->vec(cell).y = 0.0f;
+        if (cell.y == resolution.y - 1 && vel_grid_->vec(cell).y > 0.0f) vel_grid_->vec(cell).y = 0.0f;
+
+        // if (cell.x == 0 && vel_grid_->vec(cell).x < 0.0f) vel_grid_->vec(cell).x = -vel_grid_->vec(cell).x;
+        // if (cell.x == resolution.x - 1 && vel_grid_->vec(cell).x > 0.0f) vel_grid_->vec(cell).x = -vel_grid_->vec(cell).x;
+        // if (cell.z == 0 && vel_grid_->vec(cell).z < 0.0f) vel_grid_->vec(cell).z = -vel_grid_->vec(cell).z;
+        // if (cell.z == resolution.z - 1 && vel_grid_->vec(cell).z > 0.0f) vel_grid_->vec(cell).z = -vel_grid_->vec(cell).z;
+
+        // if (cell.y == 0 && vel_grid_->vec(cell).y < 0.0f) vel_grid_->vec(cell).y = -vel_grid_->vec(cell).y;
+    }
+}
+
+void PICFLIPFluid::divergence() {
+    glm::ivec3 cell, resolution = grid_->config_.resolution;
+    for (cell.x = 0; cell.x < resolution.x; ++cell.x)
+    for (cell.y = 0; cell.y < resolution.y; ++cell.y)
+    for (cell.z = 0; cell.z < resolution.z; ++cell.z) {
+        if (!grid_->cell(cell).marker) continue;
+        glm::vec4 vel_min = vel_grid_->vec(cell);
+        glm::vec3 vel_max;
+        vel_max.x = vel_grid_->cvec(cell + glm::ivec3(1, 0, 0)).x;
+        vel_max.y = vel_grid_->cvec(cell + glm::ivec3(0, 1, 0)).y;
+        vel_max.z = vel_grid_->cvec(cell + glm::ivec3(0, 0, 1)).z;
+
+        divergence_grid_->vec(cell) = glm::dot(vel_max - glm::vec3(vel_min), glm::vec3(1.0f));
+        divergence_grid_->vec(cell) -= scheduler(vel_min.w / particles_per_cell_ - 1.0f);
+    }
+}
+
+void PICFLIPFluid::jacobi(int iter) {
+    glm::ivec3 cell, resolution = grid_->config_.resolution;
+    for (int i = 0; i < iter; ++i) {
+        for (cell.x = 0; cell.x < resolution.x; ++cell.x)
+        for (cell.y = 0; cell.y < resolution.y; ++cell.y)
+        for (cell.z = 0; cell.z < resolution.z; ++cell.z) {
+            if (!grid_->cell(cell).marker) continue;
+            buffer_pressure_grid_->vec(cell) = - divergence_grid_->vec(cell);
+            buffer_pressure_grid_->vec(cell) += pressure_grid_->cvec(cell + glm::ivec3(1, 0, 0));
+            buffer_pressure_grid_->vec(cell) += pressure_grid_->cvec(cell - glm::ivec3(1, 0, 0));
+            buffer_pressure_grid_->vec(cell) += pressure_grid_->cvec(cell + glm::ivec3(0, 1, 0));
+            buffer_pressure_grid_->vec(cell) += pressure_grid_->cvec(cell - glm::ivec3(0, 1, 0));
+            buffer_pressure_grid_->vec(cell) += pressure_grid_->cvec(cell + glm::ivec3(0, 0, 1));
+            buffer_pressure_grid_->vec(cell) += pressure_grid_->cvec(cell - glm::ivec3(0, 0, 1));
+            buffer_pressure_grid_->vec(cell) /= 6.0f;
+            // if (cell == glm::ivec3(15, 5, 13)) {
+            //     std::cout << "pressure: " << buffer_pressure_grid_->vec(cell) << std::endl << "divergence: " << divergence_grid_->vec(cell) << std::endl << "pressure1: " << pressure_grid_->vec(cell) << std::endl;
+            // }
+        }
+        swapPressureBuffers();
+    }
+}
+
+void PICFLIPFluid::subtractVel(void) {
+    glm::ivec3 cell, resolution = grid_->config_.resolution;
+    for (cell.x = 0; cell.x < resolution.x; ++cell.x)
+    for (cell.y = 0; cell.y < resolution.y; ++cell.y)
+    for (cell.z = 0; cell.z < resolution.z; ++cell.z) {
+        float pres_max = pressure_grid_->vec(cell);
+        glm::vec4 gradient;
+        gradient.x = pres_max - pressure_grid_->cvec(cell - glm::ivec3(1, 0, 0));
+        gradient.y = pres_max - pressure_grid_->cvec(cell - glm::ivec3(0, 1, 0));
+        gradient.z = pres_max - pressure_grid_->cvec(cell - glm::ivec3(0, 0, 1));
+        gradient.w = 0.0f;
+        vel_grid_->vec(cell) -= gradient;
+    }
+}
+
+void PICFLIPFluid::transferToParticles(float dt) {
+    for (int index = 0; index < particles_.size(); ++index) {
+        glm::vec3 cell_pos = grid_->worldToGrid(particles_[index].position);
+
+        glm::vec3 particle_vel = particles_[index].velocity;
+        glm::vec3 grid_vel = sampleVelocity(vel_grid_, cell_pos);
+        glm::vec3 grid_vel_orig = sampleVelocity(orig_vel_grid_, cell_pos);
+
+        glm::vec3 grid_change = grid_vel - grid_vel_orig;
+
+        glm::vec3 flip_vel = particle_vel + grid_change;
+        glm::vec3 pic_vel = grid_vel;
+
+        glm::vec3 new_vel = pic_vel * (1.0f - flipness_) + flip_vel * flipness_;
+        new_vel *= vel_discount_;
+
+        glm::vec3 cfl = glm::vec3(1.0f, 1.0f, 1.0f) / (grid_->config_.scale * dt);
+        new_vel.x = new_vel.x > cfl.x ? cfl.x : (new_vel.x < -cfl.x ? -cfl.x : new_vel.x);
+        new_vel.y = new_vel.y > cfl.y ? cfl.y : (new_vel.y < -cfl.y ? -cfl.y : new_vel.y);
+        new_vel.z = new_vel.z > cfl.z ? cfl.z : (new_vel.z < -cfl.z ? -cfl.z : new_vel.z);
+
+        particles_[index].velocity = new_vel;
+    }
+}
+
+void PICFLIPFluid::advect(float dt) {
+    for (int index = 0; index < particles_.size(); ++index) {
+        glm::vec3 cell_pos = grid_->worldToGrid(particles_[index].position);
+
+        glm::vec3 grid_vel = sampleVelocity(vel_grid_, cell_pos);
+
+        glm::vec3 halfway_pos = particles_[index].position + grid_vel * dt * 0.5f;
+        cell_pos = grid_->worldToGrid(halfway_pos);
+        glm::vec3 halfway_vel = sampleVelocity(vel_grid_, cell_pos);
+
+        glm::vec3 step = (halfway_vel * dt);
+
+        glm::vec3 new_pos = particles_[index].position + step;
+
+        cell_pos = grid_->worldToGrid(new_pos);
+        
+        float wall_thickness = grid_->config_.wall_thickness;
+        cell_pos.x = cell_pos.x < wall_thickness ? wall_thickness : (cell_pos.x > grid_->config_.resolution.x - wall_thickness ? grid_->config_.resolution.x - wall_thickness : cell_pos.x);
+        cell_pos.y = cell_pos.y < wall_thickness ? wall_thickness : (cell_pos.y > grid_->config_.resolution.y - wall_thickness ? grid_->config_.resolution.y - wall_thickness : cell_pos.y);
+        cell_pos.z = cell_pos.z < wall_thickness ? wall_thickness : (cell_pos.z > grid_->config_.resolution.z - wall_thickness ? grid_->config_.resolution.z - wall_thickness : cell_pos.z);
+
+        // if (cell_pos.x < wall_thickness) cell_pos.x = wall_thickness, particles_[index].velocity.x = 0.0f;
+        // if (cell_pos.x > grid_->config_.resolution.x - wall_thickness) cell_pos.x = grid_->config_.resolution.x - wall_thickness, particles_[index].velocity.x = 0.0f;
+        // if (cell_pos.y < wall_thickness) cell_pos.y = wall_thickness, particles_[index].velocity.y = 0.0f;
+        // if (cell_pos.y > grid_->config_.resolution.y - wall_thickness) cell_pos.y = grid_->config_.resolution.y - wall_thickness, particles_[index].velocity.y = 0.0f;
+        // if (cell_pos.z < wall_thickness) cell_pos.z = wall_thickness, particles_[index].velocity.z = 0.0f;
+        // if (cell_pos.z > grid_->config_.resolution.z - wall_thickness) cell_pos.z = grid_->config_.resolution.z - wall_thickness, particles_[index].velocity.z = 0.0f;
+
+        particles_[index].position = grid_->gridToWorld(cell_pos);
+    }
+    // std::cout << "p:" << particles_[4500].position << std::endl;
+}
+
+void PICFLIPFluid::update(float dt) {
+    memset(grid_->cells_, 0, grid_->config_.resolution.x * grid_->config_.resolution.y * grid_->config_.resolution.z * sizeof(Cell));
+    memset(vel_grid_->vecs_, 0, grid_->config_.resolution.x * grid_->config_.resolution.y * grid_->config_.resolution.z * sizeof(glm::vec3));
+    memset(divergence_grid_->vecs_, 0, grid_->config_.resolution.x * grid_->config_.resolution.y * grid_->config_.resolution.z * sizeof(float));
+    memset(pressure_grid_->vecs_, 0, grid_->config_.resolution.x * grid_->config_.resolution.y * grid_->config_.resolution.z * sizeof(float));
+
+    sortParticles();
+    transferToGrid();
+    // std::cout << "1:" << vel_grid_->vec(glm::ivec3(15, 5, 13)) << std::endl; 
+    marker();
+    addForce(accerleration_, dt);
+    // std::cout << "2:" << vel_grid_->vec(glm::ivec3(15, 5, 13)) << std::endl;
+    divergence();
+    // std::cout << "3:" << vel_grid_->vec(glm::ivec3(15, 5, 13)) << std::endl;
+    jacobi(jacobi_iters_);
+    // std::cout << "4:" << vel_grid_->vec(glm::ivec3(15, 5, 13)) << std::endl;
+    subtractVel();
+    // std::cout << "5:" << vel_grid_->vec(glm::ivec3(15, 5, 13)) << std::endl;
+    transferToParticles(dt);
+    advect(dt);
 }

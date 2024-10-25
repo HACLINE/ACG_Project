@@ -14,7 +14,7 @@ __global__ void hashTask(Particle* cuda_particles, int* hash_list, int* hash_cou
     atomicAdd(&hash_count[hash_list[i]], 1);
 }
 
-// __global__ void countNeighborsTask(Particle* cuda_particles, AugmentedParticle* cuda_augmented_particles, int** hash_table, const int num_particles, const float kernel_radius, const int hash_table_size, int* hash_count) {
+// __global__ void countNeighborsTask(Particle* cuda_particles, DFSPHAugmentedParticle* cuda_augmented_particles, int** hash_table, const int num_particles, const float kernel_radius, const int hash_table_size, int* hash_count) {
 //     int i = blockIdx.x * blockDim.x + threadIdx.x;
 //     if (i >= num_particles) return;
 //     int x = (int)floor(float(cuda_particles[i].position.x) / kernel_radius);
@@ -38,7 +38,7 @@ __global__ void hashTask(Particle* cuda_particles, int* hash_list, int* hash_cou
     
 // }
 
-__global__ void getNeighborsTask(Particle* cuda_particles, AugmentedParticle* cuda_augmented_particles, int** hash_table, const int num_particles, const float kernel_radius, const int hash_table_size, int* hash_count, const int neighborhood_size) {
+__global__ void getNeighborsTask(Particle* cuda_particles, DFSPHAugmentedParticle* cuda_augmented_particles, int** hash_table, const int num_particles, const float kernel_radius, const int hash_table_size, int* hash_count, const int neighborhood_size) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_particles) return;
     int x = (int)floor(float(cuda_particles[i].position.x) / kernel_radius);
@@ -62,7 +62,7 @@ __global__ void getNeighborsTask(Particle* cuda_particles, AugmentedParticle* cu
     cuda_augmented_particles[i].num_neighbors = cnt;
 }
 
-void SpatialHash::updateAndGetNeighborsCUDA(Particle* cuda_particles, AugmentedParticle* cuda_augmented_particles, int num_particles, const int cuda_block_size, const int neighborhood_size) {
+void SpatialHash::updateAndGetNeighborsCUDA(Particle* cuda_particles, DFSPHAugmentedParticle* cuda_augmented_particles, int num_particles, const int cuda_block_size, const int neighborhood_size) {
     int* hash_list = nullptr;
     int* hash_count = nullptr;
     int* cpu_hash_list = new int[num_particles];
@@ -113,9 +113,9 @@ void SpatialHash::updateAndGetNeighborsCUDA(Particle* cuda_particles, AugmentedP
     // CUDA_CHECK_ERROR(cudaDeviceSynchronize());
     // CUDA_CHECK_ERROR(cudaGetLastError());
 
-    // AugmentedParticle tmp;
+    // DFSPHAugmentedParticle tmp;
     // for (int i = 0; i < num_particles; ++i) {
-    //     CUDA_CHECK_ERROR(cudaMemcpy(&tmp, &cuda_augmented_particles[i], sizeof(AugmentedParticle), cudaMemcpyDeviceToHost));
+    //     CUDA_CHECK_ERROR(cudaMemcpy(&tmp, &cuda_augmented_particles[i], sizeof(DFSPHAugmentedParticle), cudaMemcpyDeviceToHost));
     //     if (tmp.cuda_neighbors != nullptr) {
     //         CUDA_CHECK_ERROR(cudaFree(tmp.cuda_neighbors));
     //         tmp.cuda_neighbors = nullptr;
@@ -123,7 +123,7 @@ void SpatialHash::updateAndGetNeighborsCUDA(Particle* cuda_particles, AugmentedP
     //     if (tmp.num_neighbors > 0) {
     //         CUDA_CHECK_ERROR(cudaMalloc(&tmp.cuda_neighbors, tmp.num_neighbors * sizeof(int)));
     //     }
-    //     CUDA_CHECK_ERROR(cudaMemcpy(&cuda_augmented_particles[i], &tmp, sizeof(AugmentedParticle), cudaMemcpyHostToDevice));
+    //     CUDA_CHECK_ERROR(cudaMemcpy(&cuda_augmented_particles[i], &tmp, sizeof(DFSPHAugmentedParticle), cudaMemcpyHostToDevice));
     // }
 
     getNeighborsTask<<<num_blocks, cuda_block_size>>>(cuda_particles, cuda_augmented_particles, hash_table, num_particles, kernel_radius_, hash_table_size_, hash_count, neighborhood_size);

@@ -9,7 +9,9 @@
 #endif
 
 #include "geometry.h"
+#include "grid.h"
 #include "spatial_hash.h"
+#include "utils.h"
 
 class Fluid {
 public:
@@ -23,7 +25,7 @@ public:
 #ifdef HAS_CUDA
     void applyAccelerationCUDA(const glm::vec3& a);
 #endif
-    void applyGravity(const glm::vec3& g) {applyAcceleration(g);}
+    virtual void applyGravity(const glm::vec3&) = 0;
     void applyForce(const glm::vec3& f, int i) { particles_[i].acceleration += f / particles_[i].mass; }
     void applyForce(const glm::vec3& f) { for (int i = 0; i < particles_.size(); ++i) applyForce(f, i); }
 
@@ -56,8 +58,9 @@ protected:
 // Divergence-Free Smoothed Particle Hydrodynamics
 class DFSPHFluid : public Fluid {
 public:
-    DFSPHFluid(const std::string&, const YAML::Node&, const std::string&, const YAML::Node&);
+    DFSPHFluid(const std::string&, const YAML::Node&, const std::string&, const YAML::Node&, const YAML::Node&);
     ~DFSPHFluid();
+    void applyGravity(const glm::vec3& g) {applyAcceleration(g);}
 
     void update(float dt) override;
 
@@ -67,9 +70,9 @@ private:
     SpatialHash spatial_hash_;
 
 
-    std::vector<AugmentedParticle> augmented_particles_;
+    std::vector<DFSPHAugmentedParticle> augmented_particles_;
 #ifdef HAS_CUDA
-    AugmentedParticle* cuda_augmented_particles_;
+    DFSPHAugmentedParticle* cuda_augmented_particles_;
     void updateBufferCUDA(float);
     void updatePositionCUDA(float);
 
@@ -100,22 +103,61 @@ private:
 };
 
 #ifdef HAS_CUDA
-__global__ void applyAccelerationTask(Particle*, int, const glm::vec3);
+__global__ void DFSPHapplyAccelerationTask(Particle*, int, const glm::vec3);
 
-__global__ void updateBufferTask(Particle*, glm::vec3*, int, float, float);
-__global__ void updatePositionTask(Particle*, int, float, float);
+__global__ void DFSPHupdateBufferTask(Particle*, glm::vec3*, int, float, float);
+__global__ void DFSPHupdatePositionTask(Particle*, int, float, float);
 
-__global__ void computeDensityTask(Particle*, AugmentedParticle*, int, float);
-__global__ void computeAlphaTask(Particle*, AugmentedParticle*, int, float);
-__global__ void computeRhoStarTask(Particle*, AugmentedParticle*, int, float, float, float, float*);
-__global__ void computeKappaTask(AugmentedParticle*, int, float);
-__global__ void computeRhoDerivativeTask(Particle*, AugmentedParticle*, int, float, float*);
-__global__ void computeKappaVTask(AugmentedParticle*, int, float);
+__global__ void DFSPHcomputeDensityTask(Particle*, DFSPHAugmentedParticle*, int, float);
+__global__ void DFSPHcomputeAlphaTask(Particle*, DFSPHAugmentedParticle*, int, float);
+__global__ void DFSPHcomputeRhoStarTask(Particle*, DFSPHAugmentedParticle*, int, float, float, float, float*);
+__global__ void DFSPHcomputeKappaTask(DFSPHAugmentedParticle*, int, float);
+__global__ void DFSPHcomputeRhoDerivativeTask(Particle*, DFSPHAugmentedParticle*, int, float, float*);
+__global__ void DFSPHcomputeKappaVTask(DFSPHAugmentedParticle*, int, float);
 
-__global__ void correctVelocityErrorTask(Particle*, AugmentedParticle*, int, float, float);
+__global__ void DFSPHcorrectVelocityErrorTask(Particle*, DFSPHAugmentedParticle*, int, float, float);
 
-__device__ float W(const glm::vec3&, float);
-__device__ glm::vec3 gradW(const glm::vec3&, float);
+__device__ float DFSPHW(const glm::vec3&, float);
+__device__ glm::vec3 DFSPHgradW(const glm::vec3&, float);
 #endif
 
+class PICFLIPFluid : public Fluid {
+public:
+    PICFLIPFluid(const std::string&, const YAML::Node&, const std::string&, const YAML::Node&, const YAML::Node&);
+    ~PICFLIPFluid();
+
+    void update(float dt) override;
+
+    void applyGravity(const glm::vec3& g) {accerleration_ = g;}
+
+private:
+    float k(const glm::vec3& v) { return ((abs(v.x) < 1.0f && abs(v.y) < 1.0f && abs(v.z) < 1.0f) ? ((1.0f - abs(v.x)) * (1.0f - abs(v.y)) * (1.0f - abs(v.z))) : 0.0f); }
+
+    void swapVelBuffers(void) {std::swap(vel_grid_, buffer_vel_grid_);}
+    void swapPressureBuffers(void) {std::swap(pressure_grid_, buffer_pressure_grid_);}
+    template <class T> T interpolate(const VecGrid<T>*, const glm::vec3&);
+    template <class T> glm::vec3 sampleVelocity(const VecGrid<T>*, const glm::vec3&);
+    float scheduler(float);
+
+    void sortParticles(void);
+    void transferToGrid(void);
+    void marker(void);
+    void addForce(const glm::vec3&, float);
+    void divergence(void);
+    void jacobi(int);
+    void subtractVel(void);
+    void transferToParticles(float);
+    void advect(float);
+
+private:
+
+    PICFLIPGrid *grid_;
+    VecGrid<glm::vec4> *orig_vel_grid_, *vel_grid_, *buffer_vel_grid_;
+    VecGrid<float> *divergence_grid_;
+    VecGrid<float> *pressure_grid_, *buffer_pressure_grid_;
+
+    glm::vec3 accerleration_;
+    float particles_per_cell_, flipness_, scheduler_temperature_, scheduler_scale_, vel_discount_; 
+    int jacobi_iters_;
+};
 #endif

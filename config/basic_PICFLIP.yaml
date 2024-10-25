@@ -1,0 +1,6 @@
+particles_per_cell: 10.0
+scheduler_scale: 2
+scheduler_temperature: 0.1
+jacobi_iters: 50
+flipness: 0.99
+vel_discount: 0.95

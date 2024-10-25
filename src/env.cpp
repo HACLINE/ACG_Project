@@ -22,7 +22,9 @@ Simulation::Simulation(YAML::Node load, YAML::Node physics, YAML::Node cuda): cu
     for (int i = 0; i < load["fluid"]["cfg"].size(); ++i) {
         Fluid* fluid;
         if (load["fluid"]["type"].as<std::string>() == "DFSPH") {
-            fluid = new DFSPHFluid(fluid_path, load["fluid"]["cfg"][i], load["fluid"]["type"].as<std::string>(), cuda);
+            fluid = new DFSPHFluid(fluid_path, load["fluid"]["cfg"][i], load["fluid"]["type"].as<std::string>(), physics, cuda);
+        } else if (load["fluid"]["type"].as<std::string>() == "PICFLIP") {
+            fluid = new PICFLIPFluid(fluid_path, load["fluid"]["cfg"][i], load["fluid"]["type"].as<std::string>(), physics, cuda);
         } else {
             std::cerr << "[Error] Invalid fluidtype" << std::endl;
             exit(1);
@@ -160,6 +162,9 @@ RenderObject Simulation::getRenderObject(void) {
     }
     for (int i = 0; i < fluids_.size(); ++i) {
         render_object.particles.push_back(fluids_[i]->getParticles());
+    }
+    for (int i = 0; i < cloths_.size(); ++i) {
+        render_object.meshes.push_back(cloths_[i]->getMesh());
     }
     return render_object;
 }

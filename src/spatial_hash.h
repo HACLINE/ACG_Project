@@ -43,7 +43,7 @@ public:
         }
     }
 #ifdef HAS_CUDA
-    void updateAndGetNeighborsCUDA(Particle*, AugmentedParticle*, int, const int, const int);
+    void updateAndGetNeighborsCUDA(Particle*, DFSPHAugmentedParticle*, int, const int, const int);
 #endif
 
 private:
@@ -56,8 +56,8 @@ private:
 
 #ifdef HAS_CUDA
 __global__ void hashTask(Particle*, int*, int*, const float, const int, const int);
-// __global__ void countNeighborsTask(Particle*, AugmentedParticle*, int**, const int, const float, const int, int*);
-__global__ void getNeighborsTask(Particle*, AugmentedParticle*, int**, const int, const float, const int, int*, const int);
+// __global__ void countNeighborsTask(Particle*, DFSPHAugmentedParticle*, int**, const int, const float, const int, int*);
+__global__ void getNeighborsTask(Particle*, DFSPHAugmentedParticle*, int**, const int, const float, const int, int*, const int);
 #endif
 
 #endif // SPATIAL_HASH_H
