@@ -47,30 +47,33 @@ load:
     cfg:
       # - init: square # fromfile or square
       #   name: test.cloth
-      #   scale: [15, 10]
-      #   num: [30, 20]
+      #   scale: [10, 10]
+      #   num: [20, 20]
       #   height: 5
       #   mass: 0.1
       #   radius: 0.02
-      #   ks: [200.0, 200.0, 60.0]
+      #   ks: [1000.0, 1000.0, 1000.0]
       #   kd: [0, 0, 0]
-      #   damping: -0.3
+      #   damping: 0.007
   wall:
     cfg:
-      - type: triangle
-        pos1: [-30, -10, -30]
-        pos2: [-30, -10, 30]
-        pos3: [30, -10, 30]
-        thickness: 0.3
-        restitution: 0.1
-        friction: 0.9
-      - type: triangle
-        pos1: [30, -10, -30]
-        pos2: [-30, -10, -30]
-        pos3: [30, -10, 30]
-        thickness: 0.3
-        restitution: 0.1
-        friction: 0.9
+      # - type: triangle
+      #   pos1: [-30, -10, -30]
+      #   pos2: [-30, -10, 30]
+      #   pos3: [30, -10, 30]
+      #   thickness: 0.3
+      #   restitution: 0.1
+      #   friction: 0.9
+      # - type: triangle
+      #   pos1: [30, -10, -30]
+      #   pos2: [-30, -10, -30]
+      #   pos3: [30, -10, 30]
+      #   thickness: 0.3
+      #   restitution: 0.1
+      #   friction: 0.9
+      - type: sphere
+        center: [-5, -7, 0]
+        radius: 5
       # - type: triangle
       #   pos1: [0, -5, 10]
       #   pos2: [0, -15, -10]

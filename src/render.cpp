@@ -119,8 +119,8 @@ void Renderer::renderTriangle(Triangle* triangle) {
 void Renderer::renderSphere(Sphere* sphere) {
     glPushMatrix();
     glTranslatef(sphere->center.x, sphere->center.y, sphere->center.z);
-    glColor3f(0.0f, 0.0f, 0.8f);
-    glutSolidSphere(sphere->radius, 20, 20);
+    glColor3f(0.0f, 0.0f, 0.6f);
+    glutSolidSphere(sphere->radius - 0.01, 20, 20);
     glPopMatrix();
 }
 
@@ -136,6 +136,9 @@ void Renderer::renderSimulation(const Simulation& simulation) {
     }
     for (int i = 0; i < simulation.getNumWalls(); i++) {
         renderTriangle(simulation.getWall(i));
+    }
+    for (int i = 0; i < simulation.getNumSpheres(); i++) {
+        renderSphere(simulation.getSphere(i));
     }
 }
 

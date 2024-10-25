@@ -6,6 +6,14 @@ Done:
 TODO:
 - Coupling.
 
+### 2024.10.24 11:00
+by wxb
+Done:
+- Cloth 1.6: Collision with Triangle & Sphere.
+- Change `damping_` and `update()` of `class Cloth`.
+
+TODO:
+- Adjust Fluid and then do Cloth-Fluid interaction.
 
 ### 2024.10.19 22:00
 by wxb
