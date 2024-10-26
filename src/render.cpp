@@ -6,7 +6,13 @@
 #include <GLUT/glut.h>
 #endif
 
-Renderer::Renderer(YAML::Node config) : config_(config) {}
+#include <utils.h>
+
+Renderer::Renderer(YAML::Node config) : config_(config) {
+    if (usr_name == 2) {
+        initializeOpenGL(config); 
+    } 
+}
 
 void Renderer::initializeOpenGL(YAML::Node config) {
     int argc = config["init"]["argc"].as<int>();

@@ -38,6 +38,7 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, float kernel_rad
         std::cout << "[Load] Cloth: Load " << particles_.size() << " particles, " << springs_.size() << " springs from " << filename << std::endl;
     } else if (config["init"].as<std::string>() == "square") {
         int x_num = config["num"][0].as<int>(), z_num = config["num"][1].as<int>();
+        num_x_ = x_num, num_z_ = z_num;
         float x_gap = config["scale"][0].as<float>() / (x_num - 1),
               z_gap = config["scale"][1].as<float>() / (z_num - 1);
         float slope_gap = sqrt(x_gap * x_gap + z_gap * z_gap);
@@ -99,6 +100,7 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, float kernel_rad
         // for (int i = 0; i < x_num; ++i) fixed_[i * z_num] = fixed_[i * z_num + (z_num-1)] = true;
         // fixed_[0] = fixed_[z_num - 1] = fixed_[particles_.size() - 1] = fixed_[particles_.size() - z_num] = true;
         fixed_[0] = fixed_[z_num - 1] = true;
+        particles_[0].mass = particles_[z_num - 1].mass = 999999.0f;
 
         std::cout << "[Load] Cloth: Load " << particles_.size() << " particles and " << springs_.size() << " springs" << std::endl;
     }
@@ -117,6 +119,14 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, float kernel_rad
 void Cloth::setFix(int ind, bool fixed) {
     assert(num_particles_ > ind && ind >= 0);
     fixed_[ind] = fixed;
+}
+
+void Cloth::applyAcceleration(const glm::vec3& a) {
+    for (int i = 0; i < num_particles_; ++i) {
+        if (!fixed_[i]) {
+            particles_[i].acceleration += a;
+        }
+    }
 }
 
 void Cloth::applyForce(const glm::vec3& f, int i) {
@@ -265,4 +275,94 @@ Mesh Cloth::getMesh() {
     }
     // std::cout << std::endl;
     return mesh;
+}
+
+XPBDCloth::XPBDCloth(const std::string& path, const YAML::Node& config, float kernel_radius, int hash_table_size): Cloth(path, config, kernel_radius, hash_table_size) {
+    num_distance_constraints_ = num_bending_constraints_ = 0;
+    for (int i = 0; i < num_x_; ++i) {
+        for (int j = 0; j < num_z_; ++j) {
+            if (i < num_x_ - 1) {
+                addDistanceConstraint(i * num_z_ + j, (i+1) * num_z_ + j, config["stiff"]["horizontal"].as<float>());
+            }
+            if (j < num_z_ - 1) {
+                addDistanceConstraint(i * num_z_ + j, i * num_z_ + (j+1), config["stiff"]["vertical"].as<float>());
+            }
+            if (i < num_x_ - 1 && j < num_z_ - 1) {
+                addDistanceConstraint(i * num_z_ + j, (i+1) * num_z_ + (j+1), config["stiff"]["shear"].as<float>());
+                addDistanceConstraint(i * num_z_ + (j+1), (i+1) * num_z_ + j, config["stiff"]["shear"].as<float>());
+            }
+            if (i < num_x_ - 2) {
+                addBendingConstraint(i * num_z_ + j, (i+1) * num_z_ + j, (i+2) * num_z_ + j, config["stiff"]["bend"].as<float>());
+            }
+            if (j < num_z_ - 2) {
+                addBendingConstraint(i * num_z_ + j, i * num_z_ + (j+1), i * num_z_ + (j+2), config["stiff"]["bend"].as<float>());
+            }
+        }
+    }
+    for (int i = 0; i < num_particles_; ++i) {
+        w_.push_back(1.0f / particles_[i].mass);
+    }
+    iters_ = config["iters"].as<int>();
+    p_ = delta_p_ = std::vector<glm::vec3>(num_particles_, glm::vec3(0.0f));
+}
+
+XPBDCloth::~XPBDCloth() {}
+
+void XPBDCloth::addDistanceConstraint(int p1, int p2, float stiffness) {
+    distance_constraints_.push_back(XPBD_DistanceConstraint{p1, p2, glm::length(particles_[p1].position - particles_[p2].position), stiffness});
+    num_distance_constraints_++;
+}
+
+void XPBDCloth::addBendingConstraint(int p1, int p2, int p3, float stiffness) {
+    glm::vec3 avg = (particles_[p1].position + particles_[p2].position + particles_[p3].position) / 3.0f;
+    float rest_length = glm::length(avg - particles_[p3].position);
+    bending_constraints_.push_back(XPBD_BendingConstraint{p1, p2, p3, rest_length, stiffness});
+    num_bending_constraints_++;
+}
+
+void XPBDCloth::solveDistanceConstraint(float dt) {
+    for (int i = 0; i < num_distance_constraints_; ++i) {
+        int p1 = distance_constraints_[i].p1, p2 = distance_constraints_[i].p2;
+        float rest_length = distance_constraints_[i].rest_length, k = distance_constraints_[i].stiffness;
+        float alpha_tilde = k / dt / dt;
+        float w = w_[p1] + w_[p2];
+        glm::vec3 n = particles_[p1].position - particles_[p2].position;
+        float dist = glm::length(n);
+        n = glm::normalize(n);
+        float C = dist - rest_length;
+        float delta_lambda = - C / (w + alpha_tilde);
+        delta_p_[p1] += delta_lambda * w_[p1] * n;
+        delta_p_[p2] -= delta_lambda * w_[p2] * n;
+    }
+}
+void XPBDCloth::solveBendingConstraint(float dt) {
+    ;
+}
+
+void XPBDCloth::update(float dt) {
+    // add external forces
+
+    for (int i = 0; i < num_particles_; ++i) {
+        particles_[i].acceleration += force_buffer_[i] * w_[i];
+    }
+    // update position
+    float ds = dt / iters_;
+    for (int iter = 0; iter < iters_; ++iter) {
+        for (int i = 0; i < num_particles_; ++i) {
+            p_[i] = particles_[i].position;
+            particles_[i].position += particles_[i].velocity * (1 - damping_) * ds + particles_[i].acceleration * ds * ds;
+        }
+        solveDistanceConstraint(ds);
+        solveBendingConstraint(ds);
+        for (int i = 0; i < num_particles_; ++i) {
+            particles_[i].position += delta_p_[i];
+            delta_p_[i] = glm::vec3(0.0f);
+            particles_[i].velocity = (particles_[i].position - p_[i]) / ds;
+        }
+    }
+
+    for (int i = 0; i < num_particles_; ++i) {
+        particles_[i].acceleration = glm::vec3(0.0f);
+        force_buffer_[i] = glm::vec3(0.0f);
+    }
 }

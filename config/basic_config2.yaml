@@ -1,0 +1,60 @@
+render:
+  init:
+    argc: 0
+    argv: []
+  camera:
+    eye: [30.0, 18.0, 30.0]
+    center: [0.0, 0.0, 0.0]
+    up: [0.0, 1.0, 0.0]
+  title: Basic
+  windowsize: [800, 600]
+  viewport: [0, 0, 800, 600]
+  perspective: 
+    fovy: 45.0
+    aspect: 1.3333
+    znear: 1.0
+    zfar: 1000.0
+  clearcolor: [1.0, 1.0, 1.0, 1.0]
+  light:
+    position: [0.5, 1.0, 0.0, 0.0]
+    ambient: [0.2, 0.2, 0.2, 1.0]
+    diffuse: [0.8, 0.8, 0.8, 1.0]
+    specular: [1.0, 1.0, 1.0, 1.0]
+
+load:
+  rigidbody:
+    type: impulse
+    path: /assets/rigidbody
+    cfg: []
+    # [name, pos, scale]
+  fluid:
+    base: basic_DFSPH.yaml
+    type: DFSPH
+    path: /assets/fluid
+    cfg: []
+  cloth:
+    base: basic_XPBD.yaml
+    type: XPBD
+    path: /assets/cloth
+    cfg: []
+    kernel_radius: 0.04
+    hash_table_size: 100
+  wall:
+    cfg: []
+
+video:
+  fps: 30
+  sps: 300 # steps per second
+  length: 2
+
+simulation:
+  gravity: [0.0, -9.8, 0.0]
+  box: 
+    min: [-2.0, -2.0, -2.0]
+    max: [2.0, 2.0, 2.0]
+  restitution: 0.2
+  friction: 0.5
+
+cuda:
+  enabled: false
+  block_size: 512

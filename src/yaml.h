@@ -5,9 +5,9 @@
 #include <fstream>
 #include <iostream>
 
-void merge_config(YAML::Node&, const YAML::Node&);
+inline void merge_config(YAML::Node&, const YAML::Node&);
 
-void merge_config(YAML::Node& merged_config, const YAML::Node& config) {
+inline void merge_config(YAML::Node& merged_config, const YAML::Node& config) {
     if (!merged_config.IsMap()) {
         merged_config = config;
         return;
@@ -19,17 +19,23 @@ void merge_config(YAML::Node& merged_config, const YAML::Node& config) {
     }
 }
 
-YAML::Node yaml_solver(const std::string filename, const std::string cwd) {
+inline YAML::Node yaml_solver(const std::string filename, const std::string cwd) {
     YAML::Node config = YAML::LoadFile(cwd + "/config/" + filename);
     std::string base = config["base"].as<std::string>();
     YAML::Node merged_config = YAML::LoadFile(cwd + "/config/" + base);
     merge_config(merged_config, config);
     merged_config["cwd"] = YAML::Node(cwd);
     YAML::Node fluid_config = YAML::LoadFile(cwd + "/config/" + merged_config["load"]["fluid"]["base"].as<std::string>());
+    YAML::Node cloth_config = YAML::LoadFile(cwd + "/config/" + merged_config["load"]["cloth"]["base"].as<std::string>());
     for (int i = 0; i < merged_config["load"]["fluid"]["cfg"].size(); ++i) {
         YAML::Node tmp = merged_config["load"]["fluid"]["cfg"][i];
         merge_config(tmp, fluid_config);
         merged_config["load"]["fluid"]["cfg"][i] = tmp;
+    }
+    for (int i = 0; i < merged_config["load"]["cloth"]["cfg"].size(); ++i) {
+        YAML::Node tmp = merged_config["load"]["cloth"]["cfg"][i];
+        merge_config(tmp, cloth_config);
+        merged_config["load"]["cloth"]["cfg"][i] = tmp;
     }
     return merged_config;
 }

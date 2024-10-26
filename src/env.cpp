@@ -35,6 +35,8 @@ Simulation::Simulation(YAML::Node load, YAML::Node physics, YAML::Node cuda): cu
         Cloth* cloth;
         if (load["cloth"]["type"].as<std::string>() == "mass_spring") {
             cloth = new Cloth(cloth_path, load["cloth"]["cfg"][i], load["cloth"]["kernel_radius"].as<float>(), load["cloth"]["hash_table_size"].as<int>());
+        } else if (load["cloth"]["type"].as<std::string>() == "XPBD") {
+            cloth = new XPBDCloth(cloth_path, load["cloth"]["cfg"][i], load["cloth"]["kernel_radius"].as<float>(), load["cloth"]["hash_table_size"].as<int>());
         } else {
             std::cerr << "[Error] Invalid clothtype" << std::endl;
             exit(1);
@@ -137,15 +139,15 @@ void Simulation::update(float dt) {
     for (int i = 0; i < fluids_.size(); ++i) {
         collision::fluid_box_collision(fluids_[i], box_min_, box_max_, restitution_, friction_, cuda_);
     }
-    for (int i = 0; i < cloths_.size(); ++i) { // Cloth-Wall collision
-        cloths_[i]->selfCollision();
-        for (int j = 0; j < walls_.size(); ++j) {
-            cloths_[i]->collisionWithTriangle(walls_[j], dt);
-        }
-        for (int j = 0; j < spheres_.size(); ++j) {
-            cloths_[i]->collisionWithSphere(spheres_[j], dt);
-        }
-    }
+    // for (int i = 0; i < cloths_.size(); ++i) { // Cloth-Wall collision
+    //     cloths_[i]->selfCollision();
+    //     for (int j = 0; j < walls_.size(); ++j) {
+    //         cloths_[i]->collisionWithTriangle(walls_[j], dt);
+    //     }
+    //     for (int j = 0; j < spheres_.size(); ++j) {
+    //         cloths_[i]->collisionWithSphere(spheres_[j], dt);
+    //     }
+    // }
     // for (int i = 0; i < cloths_.size(); ++i) {
     //     cloths_[i]->selfCorrectSpring();
     // }

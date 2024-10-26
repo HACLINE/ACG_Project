@@ -1,3 +1,11 @@
+/*
+./main --config [config].yaml --usr [usr]
+
+usr: xqc (multi-thread rendering) or wxb (single-thread rendering).
+
+config: see config/ for examples.
+*/
+
 #include <yaml-cpp/yaml.h>
 #ifdef __linux__
 #include <GL/glut.h>
@@ -21,7 +29,10 @@
 #include "env.h"
 #include "genvideo.h"
 
+#ifndef STB_IMAGE_WRITE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+#endif
+
 #include "stb_image_write.h"
 
 void saveFrame(const std::string& filename, int width, int height) {
@@ -87,9 +98,6 @@ void renderThread(Renderer& renderer, const YAML::Node& config, Simulation& simu
     generateVideo(config["video"], figuresPath);
 }
 
-/*
-./main --config config.yaml
-*/
 int main(int argc, char* argv[]) {
 
     std::cout << "[main] Starting simulation" << std::endl;
@@ -112,8 +120,29 @@ int main(int argc, char* argv[]) {
     YAML::Node config = yaml_solver(args["config"], std::string(cwd));
     std::string cwd_str = config["cwd"].as<std::string>();
     // if cwd doesn't end up with '/build'
-    if (cwd_str.substr(cwd_str.size() - 5) != "/build") cwd_str += "/build";
+    if (cwd_str.substr(cwd_str.size() - 6) != "/build") cwd_str += "/build";
     figuresPath = cwd_str + figuresPath;
+    std::cout << figuresPath << std::endl;
+
+    if (args["usr"] == "xqc") {
+        usr_name = 1;
+    } else if (args["usr"] == "wxb") {
+        usr_name = 2;
+    }
+
+    Renderer renderer(config["render"]);
+    YAML::Node load_config = config["load"];
+    load_config["cwd"] = config["cwd"];
+    Simulation simulation(load_config, config["simulation"], config["cuda"]);
+
+    std::cout << "[main] Simulation loaded: " << simulation.getNumRigidbodies() << " rigid bodies, " << simulation.getNumFluids() << " fluids, " << simulation.getNumCloths() << " cloths, " << simulation.getNumWalls() << " walls." << std::endl;
+
+    int FPS = config["video"]["fps"].as<int>();
+    int SPS = config["video"]["sps"].as<int>();
+    assert(SPS % FPS == 0);
+    float VIDEO_LENGTH = config["video"]["length"].as<float>();
+
+if (usr_name == 1) {
 
     if (!config["cuda"]["enabled"].as<bool>()) {
         std::cout << "[CUDA] CUDA disabled" << std::endl;
@@ -124,20 +153,10 @@ int main(int argc, char* argv[]) {
     }
 #else
     else {
-        std::cout << "[CUDA WARNING] No CUDA support, automatically disabled" << std::endl;
-        config["cuda"]["enabled"] = false;
+        std::cout << "[CUDA ERROR] No CUDA support!" << std::endl;
+        return 1;
     }
 #endif
-
-    Renderer renderer(config["render"]);
-    YAML::Node load_config = config["load"];
-    load_config["cwd"] = config["cwd"];
-    Simulation simulation(load_config, config["simulation"], config["cuda"]);
-
-    int FPS = config["video"]["fps"].as<int>();
-    int SPS = config["video"]["sps"].as<int>();
-    assert(SPS % FPS == 0);
-    float VIDEO_LENGTH = config["video"]["length"].as<float>();
 
     std::cout << "[Generate] Generating images into " << figuresPath << " ..." << std::endl;
 
@@ -160,6 +179,55 @@ int main(int argc, char* argv[]) {
     render_cv.notify_all();
     render_thread.join();
 
+} else if (usr_name == 2) {
+
+    std::cout << "[Generate] Generating images into ./figures ... " << std::endl;
+
+    float barcount = 0, bartotal = 100;
+
+    for (int _ = 0; _ < SPS * VIDEO_LENGTH; _++) {
+        while ((barcount + 1.0) * SPS * VIDEO_LENGTH <= bartotal * _ - 0.01) {
+            barcount++;
+            std::cout << "#";
+            if (int(barcount) % 5 == 0) std::cout<<barcount;
+            std::cout.flush();
+        }
+
+        // if (_ == SPS * 3.0) { // loose the first particle in 3 seconds
+        //     Cloth* cloth = simulation.getCloth(0);
+        //     cloth->setFix(0, false);
+        //     cloth->setFix(19, false);
+        // }
+
+        simulation.update(1.0f / SPS);
+        if (_ % (SPS / FPS) != 0) {
+            continue;
+        }
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // renderer.renderFloor();
+        renderer.renderSimulation(simulation);
+
+        std::string file_name = "./figures/frame_" + intToString(_, 6) + ".png";
+        saveFrame(file_name, config["render"]["windowsize"][0].as<int>(), config["render"]["windowsize"][1].as<int>());
+
+        renderer.swapBuffers();
+
+        GLenum err;
+        while ((err = glGetError()) != GL_NO_ERROR) {
+            std::cerr << std::endl << "[Error] OpenGL error: " << err << std::endl;
+        }
+    }
+
+    std::cout << std::endl;
+
+    generateVideo(config["video"], figuresPath);
+
+} else {
+    std::cerr << "[Error] Invalid usr name!" << std::endl;
+    return 1;
+}
 
     return 0;
 }

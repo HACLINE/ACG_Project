@@ -3,6 +3,8 @@ project(ACG_Project LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
+add_compile_options(-w)
+
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(OpenGL REQUIRED)

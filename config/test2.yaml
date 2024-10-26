@@ -1,0 +1,101 @@
+# global
+name: test
+base: basic_config2.yaml
+
+render:
+  title: WoBingWang
+  clearcolor: [1.0, 1.0, 1.0, 1.0]
+
+load:
+  rigidbody:
+    cfg: 
+      # - name: test.obj
+      #   scale: [2.0, 2.0, 2.0]
+      #   position: [0.0, 0.0, 0.0]
+      #   velocity: [0.0, 0.0, 0.0]
+      #   acceleration: [0.0, 0.0, 0.0]
+      #   orientation: [1.0, 0.0, 0.0, 0.0]
+      #   angular_velocity: [0.0, 0.0, 1.0]
+      #   angular_acceleration: [0.0, 0.0, 0.0]
+      #   mass: 5.0
+      # - name: square.obj
+      #   scale: [1.0, 1.0, 1.0]
+      #   position: [0.0, 0.0, 0.0]
+      #   velocity: [0.0, 0.0, 0.0]
+      #   acceleration: [0.0, 0.0, 0.0]
+      #   orientation: [1.0, 0.0, 0.0, 0.0]
+      #   angular_velocity: [0.0, 1.0, 1.0]
+      #   angular_acceleration: [0.0, 0.0, 0.0]
+      #   mass: 1.0
+  fluid:
+    cfg: 
+      # - init: cube # fromfile or cube
+      #   name: test.fluid # this required for fromfile
+      #   # scale: [1.0, 1.0, 1.0]
+      #   # num: [50, 50, 50]
+      #   scale: [0.4, 0.8, 0.4]
+      #   num: [20, 40, 20]
+      #   radius: 0.01 # these three required for cube
+      #   mass: 6e-6
+      #   rho: 1000.0
+  cloth: 
+    cfg:
+      - init: square # fromfile or square
+        name: test.cloth
+        scale: [10, 10]
+        num: [20, 20]
+        height: 5
+        mass: 0.1
+        radius: 0.02
+        ks: [1000.0, 1000.0, 1000.0]
+        kd: [0, 0, 0]
+        damping: 0.00025
+        
+  wall:
+    cfg:
+      # - type: triangle
+      #   pos1: [-30, -10, -30]
+      #   pos2: [-30, -10, 30]
+      #   pos3: [30, -10, 30]
+      #   thickness: 0.3
+      #   restitution: 0.1
+      #   friction: 0.9
+      # - type: triangle
+      #   pos1: [30, -10, -30]
+      #   pos2: [-30, -10, -30]
+      #   pos3: [30, -10, 30]
+      #   thickness: 0.3
+      #   restitution: 0.1
+      #   friction: 0.9
+      # - type: sphere
+      #   center: [-5, -7, 0]
+      #   radius: 5
+      # - type: triangle
+      #   pos1: [0, -5, 10]
+      #   pos2: [0, -15, -10]
+      #   pos3: [0, -15, 10]
+      #   thickness: 0.1
+      #   restitution: 0.9
+      #   friction: 0.9
+      # - type: triangle
+      #   pos1: [0, -5, 10]
+      #   pos2: [0, -5, -10]
+      #   pos3: [0, -15, -10]
+      #   thickness: 0.1
+      #   restitution: 0.9
+      #   friction: 0.9
+
+        
+
+video:
+  fps: 30
+  sps: 90
+  length: 8
+
+simulation:
+  box: 
+    min: [-3.0, -2.0, -3.0]
+    max: [2.0, 2.0, 2.0]
+
+cuda:
+  enabled: true

@@ -1,0 +1,6 @@
+stiff:
+  horizontal: 0.01
+  vertical: 0.01
+  shear: 0.01
+  bend: 0.01
+iters: 10
