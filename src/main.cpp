@@ -1,7 +1,5 @@
 /*
-./main --config [config].yaml --usr [usr]
-
-usr: xqc (multi-thread rendering) or wxb (single-thread rendering).
+./main --config [config].yaml --renderthread(optional)
 
 config: see config/ for examples.
 */
@@ -104,10 +102,11 @@ int main(int argc, char* argv[]) {
 
     // make args into a map
     std::map<std::string, std::string> args;
-    for (int i = 1; i < argc; i += 2) {
+    for (int i = 1; i < argc; ++i) {
         assert(argv[i][0] == '-' && argv[i][1] == '-');
         argv[i] += 2;
-        args[argv[i]] = argv[i + 1];
+        if (i + 1 < argc && argv[i + 1][0] != '-') args[argv[i]] = argv[i + 1], ++i;
+        else args[argv[i]] = "";
     }
 
     // load config
@@ -124,12 +123,7 @@ int main(int argc, char* argv[]) {
     figuresPath = cwd_str + figuresPath;
     std::cout << figuresPath << std::endl;
 
-    if (args["usr"] == "xqc") {
-        usr_name = 1;
-    } else if (args["usr"] == "wxb") {
-        usr_name = 2;
-    }
-
+    config["render"]["thread"] = args.find("renderthread") != args.end();
     Renderer renderer(config["render"]);
     YAML::Node load_config = config["load"];
     load_config["cwd"] = config["cwd"];
@@ -141,8 +135,6 @@ int main(int argc, char* argv[]) {
     int SPS = config["video"]["sps"].as<int>();
     assert(SPS % FPS == 0);
     float VIDEO_LENGTH = config["video"]["length"].as<float>();
-
-if (usr_name == 1) {
 
     if (!config["cuda"]["enabled"].as<bool>()) {
         std::cout << "[CUDA] CUDA disabled" << std::endl;
@@ -158,76 +150,75 @@ if (usr_name == 1) {
     }
 #endif
 
-    std::cout << "[Generate] Generating images into " << figuresPath << " ..." << std::endl;
+    if (args.find("renderthread") != args.end()) {
 
-    std::thread render_thread(renderThread, std::ref(renderer), std::ref(config), std::ref(simulation), FPS, SPS, VIDEO_LENGTH);
+        std::cout << "[Generate] Generating images into " << figuresPath << " ..." << std::endl;
 
-    for (int _ = 0; _ < SPS * VIDEO_LENGTH; _++) {
-        std::cout << "[Progress] Step " << _ << " / " << SPS * VIDEO_LENGTH << std::endl;
-        std::cout.flush();
-        simulation.update(1.0f / SPS);
+        std::thread render_thread(renderThread, std::ref(renderer), std::ref(config), std::ref(simulation), FPS, SPS, VIDEO_LENGTH);
 
-        if (_ % (SPS / FPS) == 0) {
-            std::unique_lock<std::mutex> lock(render_mutex);
-            render_queue.push(simulation.getRenderObject());
-            lock.unlock();
-            render_cv.notify_one();
-        }
-    }
-
-    done = true;
-    render_cv.notify_all();
-    render_thread.join();
-
-} else if (usr_name == 2) {
-
-    std::cout << "[Generate] Generating images into ./figures ... " << std::endl;
-
-    float barcount = 0, bartotal = 100;
-
-    for (int _ = 0; _ < SPS * VIDEO_LENGTH; _++) {
-        while ((barcount + 1.0) * SPS * VIDEO_LENGTH <= bartotal * _ - 0.01) {
-            barcount++;
-            std::cout << "#";
-            if (int(barcount) % 5 == 0) std::cout<<barcount;
+        for (int _ = 0; _ < SPS * VIDEO_LENGTH; _++) {
+            std::cout << "[Progress] Step " << _ << " / " << SPS * VIDEO_LENGTH << std::endl;
             std::cout.flush();
+            simulation.update(1.0f / SPS);
+
+            if (_ % (SPS / FPS) == 0) {
+                std::unique_lock<std::mutex> lock(render_mutex);
+                render_queue.push(simulation.getRenderObject());
+                lock.unlock();
+                render_cv.notify_one();
+            }
         }
 
-        // if (_ == SPS * 3.0) { // loose the first particle in 3 seconds
-        //     Cloth* cloth = simulation.getCloth(0);
-        //     cloth->setFix(0, false);
-        //     cloth->setFix(19, false);
-        // }
+        done = true;
+        render_cv.notify_all();
+        render_thread.join();
 
-        simulation.update(1.0f / SPS);
-        if (_ % (SPS / FPS) != 0) {
-            continue;
+    } else {
+
+        std::cout << "[Generate] Generating images into ./figures ... " << std::endl;
+
+        float barcount = 0, bartotal = 100;
+
+        for (int _ = 0; _ < SPS * VIDEO_LENGTH; _++) {
+            while ((barcount + 1.0) * SPS * VIDEO_LENGTH <= bartotal * _ - 0.01) {
+                barcount++;
+                std::cout << "#";
+                if (int(barcount) % 5 == 0) std::cout<<barcount;
+                std::cout.flush();
+            }
+
+            // if (_ == SPS * 3.0) { // loose the first particle in 3 seconds
+            //     Cloth* cloth = simulation.getCloth(0);
+            //     cloth->setFix(0, false);
+            //     cloth->setFix(19, false);
+            // }
+
+            simulation.update(1.0f / SPS);
+            if (_ % (SPS / FPS) != 0) {
+                continue;
+            }
+
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            // renderer.renderFloor();
+            renderer.renderSimulation(simulation);
+
+            std::string file_name = "./figures/frame_" + intToString(_, 6) + ".png";
+            saveFrame(file_name, config["render"]["windowsize"][0].as<int>(), config["render"]["windowsize"][1].as<int>());
+
+            renderer.swapBuffers();
+
+            GLenum err;
+            while ((err = glGetError()) != GL_NO_ERROR) {
+                std::cerr << std::endl << "[Error] OpenGL error: " << err << std::endl;
+            }
         }
 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        std::cout << std::endl;
 
-        // renderer.renderFloor();
-        renderer.renderSimulation(simulation);
+        generateVideo(config["video"], figuresPath);
 
-        std::string file_name = "./figures/frame_" + intToString(_, 6) + ".png";
-        saveFrame(file_name, config["render"]["windowsize"][0].as<int>(), config["render"]["windowsize"][1].as<int>());
-
-        renderer.swapBuffers();
-
-        GLenum err;
-        while ((err = glGetError()) != GL_NO_ERROR) {
-            std::cerr << std::endl << "[Error] OpenGL error: " << err << std::endl;
-        }
     }
-
-    std::cout << std::endl;
-
-    generateVideo(config["video"], figuresPath);
-
-} else {
-    std::cerr << "[Error] Invalid usr name!" << std::endl;
-    return 1;
-}
 
     return 0;
 }

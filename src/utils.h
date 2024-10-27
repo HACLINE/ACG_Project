@@ -5,8 +5,6 @@
 
 #include "geometry.h"
 
-extern int usr_name;
-
 std::ostream& operator<<(std::ostream&, const glm::vec3&);
 
 std::ostream& operator<<(std::ostream&, const glm::ivec3&);

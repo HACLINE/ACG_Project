@@ -9,7 +9,7 @@
 #include <utils.h>
 
 Renderer::Renderer(YAML::Node config) : config_(config) {
-    if (usr_name == 2) {
+    if (!config["thread"].as<bool>()) {
         initializeOpenGL(config); 
     } 
 }
