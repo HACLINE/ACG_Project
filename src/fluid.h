@@ -131,7 +131,7 @@ public:
     void applyGravity(const glm::vec3& g) {accerleration_ = g;}
 
 private:
-    float k(const glm::vec3& v) { return ((abs(v.x) < 1.0f && abs(v.y) < 1.0f && abs(v.z) < 1.0f) ? ((1.0f - abs(v.x)) * (1.0f - abs(v.y)) * (1.0f - abs(v.z))) : 0.0f); }
+    float k(const glm::vec3& v) { return ((fabs(v.x) < 1.0f && fabs(v.y) < 1.0f && fabs(v.z) < 1.0f) ? ((1.0f - fabs(v.x)) * (1.0f - fabs(v.y)) * (1.0f - fabs(v.z))) : 0.0f); }
 
     void swapVelBuffers(void) {std::swap(vel_grid_, buffer_vel_grid_);}
     void swapPressureBuffers(void) {std::swap(pressure_grid_, buffer_pressure_grid_);}
@@ -157,7 +157,7 @@ private:
     VecGrid<float> *pressure_grid_, *buffer_pressure_grid_;
 
     glm::vec3 accerleration_;
-    float particles_per_cell_, flipness_, scheduler_temperature_, scheduler_scale_, vel_discount_; 
+    float particles_per_cell_, flipness_, scheduler_temperature_, scheduler_scale_, vel_discount_, weight_inf_; 
     int jacobi_iters_;
 };
 #endif

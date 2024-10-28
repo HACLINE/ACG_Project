@@ -342,6 +342,7 @@ PICFLIPFluid::PICFLIPFluid(const std::string& path, const YAML::Node& config, co
     scheduler_scale_ = config["scheduler_scale"].as<float>();
     scheduler_temperature_ = config["scheduler_temperature"].as<float>();
     vel_discount_ = config["vel_discount"].as<float>();
+    weight_inf_ = config["weight_inf"].as<float>();
 
     sortParticles();
 }
@@ -437,13 +438,11 @@ void PICFLIPFluid::transferToGrid() {
                 weight += cur_weight;
             }
         }
-        vel_grid_->vec(cell).x = (weight.x > 1e-6f) ? vel_grid_->vec(cell).x / weight.x : 0.0f;
-        vel_grid_->vec(cell).y = (weight.y > 1e-6f) ? vel_grid_->vec(cell).y / weight.y : 0.0f;
-        vel_grid_->vec(cell).z = (weight.z > 1e-6f) ? vel_grid_->vec(cell).z / weight.z : 0.0f;
+        vel_grid_->vec(cell).x = (weight.x > weight_inf_) ? vel_grid_->vec(cell).x / weight.x : 0.0f;
+        vel_grid_->vec(cell).y = (weight.y > weight_inf_) ? vel_grid_->vec(cell).y / weight.y : 0.0f;
+        vel_grid_->vec(cell).z = (weight.z > weight_inf_) ? vel_grid_->vec(cell).z / weight.z : 0.0f;
 
         vel_grid_->vec(cell).w = weight.w;
-        // if (weight.w >  1e-6f)
-        // std::cout << "cell: " << cell << " vel: " << vel_grid_->vec(cell) << std::endl;
 
         orig_vel_grid_->vec(cell) = vel_grid_->vec(cell);
     }
@@ -472,13 +471,6 @@ void PICFLIPFluid::addForce(const glm::vec3& a, float dt) {
         if (cell.z == 0 || cell.z == resolution.z - 1) vel_grid_->vec(cell).z = 0.0f;
         if (cell.y == 0) vel_grid_->vec(cell).y = 0.0f;
         if (cell.y == resolution.y - 1 && vel_grid_->vec(cell).y > 0.0f) vel_grid_->vec(cell).y = 0.0f;
-
-        // if (cell.x == 0 && vel_grid_->vec(cell).x < 0.0f) vel_grid_->vec(cell).x = -vel_grid_->vec(cell).x;
-        // if (cell.x == resolution.x - 1 && vel_grid_->vec(cell).x > 0.0f) vel_grid_->vec(cell).x = -vel_grid_->vec(cell).x;
-        // if (cell.z == 0 && vel_grid_->vec(cell).z < 0.0f) vel_grid_->vec(cell).z = -vel_grid_->vec(cell).z;
-        // if (cell.z == resolution.z - 1 && vel_grid_->vec(cell).z > 0.0f) vel_grid_->vec(cell).z = -vel_grid_->vec(cell).z;
-
-        // if (cell.y == 0 && vel_grid_->vec(cell).y < 0.0f) vel_grid_->vec(cell).y = -vel_grid_->vec(cell).y;
     }
 }
 
@@ -514,9 +506,6 @@ void PICFLIPFluid::jacobi(int iter) {
             buffer_pressure_grid_->vec(cell) += pressure_grid_->cvec(cell + glm::ivec3(0, 0, 1));
             buffer_pressure_grid_->vec(cell) += pressure_grid_->cvec(cell - glm::ivec3(0, 0, 1));
             buffer_pressure_grid_->vec(cell) /= 6.0f;
-            // if (cell == glm::ivec3(15, 5, 13)) {
-            //     std::cout << "pressure: " << buffer_pressure_grid_->vec(cell) << std::endl << "divergence: " << divergence_grid_->vec(cell) << std::endl << "pressure1: " << pressure_grid_->vec(cell) << std::endl;
-            // }
         }
         swapPressureBuffers();
     }
@@ -592,9 +581,7 @@ void PICFLIPFluid::advect(float dt) {
 
         particles_[index].position = grid_->gridToWorld(cell_pos);
     }
-    // std::cout << "p:" << particles_[4500].position << std::endl;
 }
-
 void PICFLIPFluid::update(float dt) {
     memset(grid_->cells_, 0, grid_->config_.resolution.x * grid_->config_.resolution.y * grid_->config_.resolution.z * sizeof(Cell));
     memset(vel_grid_->vecs_, 0, grid_->config_.resolution.x * grid_->config_.resolution.y * grid_->config_.resolution.z * sizeof(glm::vec3));
@@ -603,16 +590,11 @@ void PICFLIPFluid::update(float dt) {
 
     sortParticles();
     transferToGrid();
-    // std::cout << "1:" << vel_grid_->vec(glm::ivec3(15, 5, 13)) << std::endl; 
     marker();
     addForce(accerleration_, dt);
-    // std::cout << "2:" << vel_grid_->vec(glm::ivec3(15, 5, 13)) << std::endl;
     divergence();
-    // std::cout << "3:" << vel_grid_->vec(glm::ivec3(15, 5, 13)) << std::endl;
     jacobi(jacobi_iters_);
-    // std::cout << "4:" << vel_grid_->vec(glm::ivec3(15, 5, 13)) << std::endl;
     subtractVel();
-    // std::cout << "5:" << vel_grid_->vec(glm::ivec3(15, 5, 13)) << std::endl;
     transferToParticles(dt);
     advect(dt);
 }

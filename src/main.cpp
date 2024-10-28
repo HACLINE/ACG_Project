@@ -121,7 +121,20 @@ int main(int argc, char* argv[]) {
     // if cwd doesn't end up with '/build'
     if (cwd_str.substr(cwd_str.size() - 6) != "/build") cwd_str += "/build";
     figuresPath = cwd_str + figuresPath;
-    std::cout << figuresPath << std::endl;
+
+    if (!config["cuda"]["enabled"].as<bool>()) {
+        std::cout << "[CUDA] CUDA disabled" << std::endl;
+    }
+#ifdef HAS_CUDA
+    else {
+        std::cout << "[CUDA] CUDA enabled" << std::endl;
+    }
+#else
+    else {
+        std::cout << "[CUDA WARNING] No CUDA support! Automatically disabled." << std::endl;
+        config["cuda"]["enabled"] = false;
+    }
+#endif
 
     config["render"]["thread"] = args.find("renderthread") != args.end();
     Renderer renderer(config["render"]);
@@ -136,19 +149,6 @@ int main(int argc, char* argv[]) {
     assert(SPS % FPS == 0);
     float VIDEO_LENGTH = config["video"]["length"].as<float>();
 
-    if (!config["cuda"]["enabled"].as<bool>()) {
-        std::cout << "[CUDA] CUDA disabled" << std::endl;
-    }
-#ifdef HAS_CUDA
-    else {
-        std::cout << "[CUDA] CUDA enabled" << std::endl;
-    }
-#else
-    else {
-        std::cout << "[CUDA ERROR] No CUDA support!" << std::endl;
-        return 1;
-    }
-#endif
 
     if (args.find("renderthread") != args.end()) {
 
@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) {
             // renderer.renderFloor();
             renderer.renderSimulation(simulation);
 
-            std::string file_name = "./figures/frame_" + intToString(_, 6) + ".png";
+            std::string file_name = figuresPath + "/frame_" + intToString(_, 6) + ".png";
             saveFrame(file_name, config["render"]["windowsize"][0].as<int>(), config["render"]["windowsize"][1].as<int>());
 
             renderer.swapBuffers();

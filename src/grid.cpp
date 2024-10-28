@@ -23,7 +23,11 @@ glm::vec3 Grid::worldToGrid(const glm::vec3& p) {
 }
 
 glm::ivec3 Grid::worldToGridInt(const glm::vec3& p) {
-    return glm::ivec3(worldToGrid(p));
+    glm::ivec3 q = glm::ivec3(worldToGrid(p));
+    q.x = q.x < 0 ? 0 : (q.x >= config_.resolution.x ? config_.resolution.x - 1 : q.x);
+    q.y = q.y < 0 ? 0 : (q.y >= config_.resolution.y ? config_.resolution.y - 1 : q.y);
+    q.z = q.z < 0 ? 0 : (q.z >= config_.resolution.z ? config_.resolution.z - 1 : q.z);
+    return q;
 }
 
 glm::vec3 Grid::gridToWorld(const glm::vec3& p) {

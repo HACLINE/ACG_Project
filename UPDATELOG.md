@@ -1,3 +1,7 @@
+### 2024.10.28 16:00
+by xqc
+Done: Bug fixed. 
+
 ### 2024.10.25 21:00
 by xqc
 Done:

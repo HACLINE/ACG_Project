@@ -71,9 +71,9 @@ load:
       #   thickness: 0.3
       #   restitution: 0.1
       #   friction: 0.9
-      - type: sphere
-        center: [-5, -7, 0]
-        radius: 5
+      # - type: sphere
+      #   center: [-5, -7, 0]
+      #   radius: 5
       # - type: triangle
       #   pos1: [0, -5, 10]
       #   pos2: [0, -15, -10]

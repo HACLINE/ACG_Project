@@ -5,6 +5,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "geometry.h"
+#include "utils.h"
 
 struct GridConfig {
     glm::vec3 min, max;
