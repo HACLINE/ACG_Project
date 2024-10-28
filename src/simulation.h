@@ -1,5 +1,5 @@
-#ifndef ENV_H
-#define ENV_H
+#ifndef SIMULATION_H
+#define SIMULATION_H
 
 #include <vector>
 #include <yaml-cpp/yaml.h>

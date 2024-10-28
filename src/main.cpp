@@ -24,7 +24,7 @@ config: see config/ for examples.
 
 #include "yaml.h"
 #include "render.h"
-#include "env.h"
+#include "simulation.h"
 #include "genvideo.h"
 
 #ifndef STB_IMAGE_WRITE_IMPLEMENTATION

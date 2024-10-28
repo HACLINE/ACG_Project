@@ -6,7 +6,7 @@ render:
   title: WoBingWang
   clearcolor: [1.0, 1.0, 1.0, 1.0]
   camera:
-    eye: [4.0, 1.2, 4.0]
+    eye: [25.0, 7.5, 25.0]
     center: [0.0, 0.0, 0.0]
     up: [0.0, 1.0, 0.0]
 
@@ -38,7 +38,7 @@ load:
       - init: cube # fromfile or cube
         name: test.fluid # this required for fromfile
         scale: [0.5, 1.0, 0.5]
-        num: [20, 40, 20]
+        num: [40, 80, 40]
         # num: [10, 20, 10]
         radius: 0.01 # these three required for cube
         mass: 6e-6
@@ -94,13 +94,13 @@ load:
 video:
   fps: 20
   sps: 20
-  length: 15
+  length: 5
 
 simulation:
   box: 
     min: [-1.0, -1.0, -1.0]
     max: [1.0, 1.0, 1.0]
-  resolution: [30, 30, 30]
+  resolution: [60, 60, 60]
 
 cuda:
   enabled: true

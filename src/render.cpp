@@ -7,6 +7,7 @@
 #endif
 
 #include <utils.h>
+#include <marching_cube.h>
 
 Renderer::Renderer(YAML::Node config) : config_(config) {
     if (!config["thread"].as<bool>()) {
@@ -31,6 +32,8 @@ void Renderer::initializeOpenGL(YAML::Node config) {
     glutCreateWindow(config["title"].as<std::string>().c_str());
 
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glViewport(config["viewport"][0].as<int>(), config["viewport"][1].as<int>(), config["viewport"][2].as<int>(), config["viewport"][3].as<int>());
     glMatrixMode(GL_PROJECTION);
@@ -59,7 +62,7 @@ void Renderer::initializeOpenGL(YAML::Node config) {
     glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
 }
 
-void Renderer::renderMesh(const Mesh& mesh) {
+void Renderer::renderMesh(const Mesh& mesh, bool transparent = false) {
     glBegin(GL_TRIANGLES);
     for (const auto& face : mesh.faces) {
         const glm::vec3& v1 = mesh.vertices[face.v1].position;
@@ -69,7 +72,8 @@ void Renderer::renderMesh(const Mesh& mesh) {
         glm::vec3 normal = glm::normalize(glm::cross(v2 - v1, v3 - v1));
         glNormal3f(normal.x, normal.y, normal.z);
 
-        glColor3f(0.0f, 0.8f, 0.2f);
+        if (!transparent) glColor3f(0.0f, 0.8f, 0.2f);
+        else glColor4f(0.0f, 0.8f, 0.2f, 0.7f);
         glVertex3f(v1.x, v1.y, v1.z);
         glVertex3f(v2.x, v2.y, v2.z);
         glVertex3f(v3.x, v3.y, v3.z);
@@ -105,8 +109,39 @@ void Renderer::renderRigidbody(Rigidbody* rigidbody) {
     renderMesh(rigidbody->getCurrentMesh());
 }
 
-void Renderer::renderFluid(Fluid* fluid) {
-    renderParticles(fluid->getParticles());
+void Renderer::renderFluid(Fluid* fluid, bool enable_mesh = true) {
+    if (!enable_mesh) {
+        renderParticles(fluid->getParticles());
+        return ;
+    }
+    const auto& particles = fluid->getParticles();
+    glm::ivec3 gridResolution(40, 40, 40);
+    float gridSpacing = 1.0f / 15.0f;
+
+    std::vector<float> densityField = particlesToDensityField(particles, gridResolution, gridSpacing);
+
+    // for (int z = 0; z < gridResolution.z; ++z) {
+    //     for (int y = 0; y < gridResolution.y; ++y) {
+    //         for (int x = 0; x < gridResolution.x; ++x) {
+    //             int index = x + y * gridResolution.x + z * gridResolution.x * gridResolution.y;
+    //             if (densityField[index] > 0.0f) {
+    //                 glPushMatrix();
+    //                 glTranslatef(x * gridSpacing - 1.0f, y * gridSpacing - 1.0f, z * gridSpacing - 1.0f);
+    //                 glColor3f(0.0f, 0.0f, 1.0f);
+    //                 glutSolidCube(gridSpacing);
+    //                 glPopMatrix();
+    //             }
+    //         }
+    //     }
+    // }
+
+    std::vector<Vertex> vertices;
+    std::vector<Face> indices;
+    MarchingCubes::generateSurface(densityField, gridResolution, gridSpacing, vertices, indices);
+
+    Mesh mesh{vertices, indices};
+    mesh_subdivision(mesh);
+    renderMesh(mesh);
 }
 
 void Renderer::renderCloth(Cloth* cloth) {
@@ -155,4 +190,19 @@ void Renderer::renderObject(const RenderObject& object) {
     for (const auto& particles : object.particles) {
         renderParticles(particles);
     }
+}
+
+std::vector<float> Renderer::particlesToDensityField(const std::vector<Particle>& particles, const glm::ivec3& gridResolution, float gridSpacing) {
+    std::vector<float> densityField(gridResolution.x * gridResolution.y * gridResolution.z, 0.0f);
+    for (const auto& particle : particles) {
+        glm::vec3 pos = particle.position + glm::vec3(1.05f, 1.05f, 1.05f);
+        glm::ivec3 gridIndex = glm::ivec3(pos / gridSpacing);
+        int index = gridIndex.x + gridIndex.y * gridResolution.x + gridIndex.z * gridResolution.x * gridResolution.y;
+        if (index < 0 || index >= densityField.size()) {
+            std::cerr << "[Render WARNING] Index out of bounds: " << index << std::endl;
+            continue;
+        }
+        densityField[index] += 1.0f;
+    }
+    return densityField;
 }

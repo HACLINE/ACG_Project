@@ -1,3 +1,10 @@
+### 2024.10.28 20:30
+by wxb
+Done: Render fluid using marching cube method implemented by C++.
+
+TODO:
+- Still have artifacts. Need to debug, or implement using some libraries.
+
 ### 2024.10.28 16:00
 by xqc
 Done: Bug fixed. 

@@ -35,6 +35,20 @@ struct Vertex {
     glm::vec3 position;
 };
 
+struct vec3compare {
+  bool operator()(const glm::vec3 &v0, const glm::vec3 &v1) const {
+    if (v0.x < v1.x)
+      return true;
+    if (v0.x > v1.x)
+      return false;
+    if (v0.y < v1.y)
+      return true;
+    if (v0.y > v1.y)
+      return false;
+    return v0.z < v1.z;
+  }
+};
+
 struct Face {
     int v1, v2, v3;
 };
@@ -79,6 +93,7 @@ glm::mat3 cross_matrix(const glm::vec3&);
 glm::mat3 rotation_matrix(const glm::quat&);
 glm::vec3 transform(const glm::vec3&, const glm::vec3&, const glm::quat&);
 Mesh mesh_translation(Mesh, const glm::vec3&, const glm::quat&);
+void mesh_subdivision(Mesh&);
 
 glm::vec3 get_spring_force(const Spring&, const glm::vec3&, const glm::vec3&);
 #endif

@@ -35,7 +35,6 @@ load:
   cloth:
     base: basic_XPBD.yaml
     type: XPBD
-    type: mass_spring
     path: /assets/cloth
     cfg: []
     kernel_radius: 0.04

@@ -7,7 +7,7 @@
 #include <vector>
 #include <yaml-cpp/yaml.h>
 #include "geometry.h"
-#include "env.h"
+#include "simulation.h"
 #include "rigid_body.h"
 #include "fluid.h"
 
@@ -18,11 +18,11 @@ public:
     Renderer(YAML::Node config);
     void initializeOpenGL(YAML::Node config);
 
-    void renderMesh(const Mesh&);
+    void renderMesh(const Mesh&, bool);
     void renderParticles(const std::vector<Particle>&);
 
     void renderRigidbody(Rigidbody*);
-    void renderFluid(Fluid*);
+    void renderFluid(Fluid*, bool);
     void renderCloth(Cloth*);
     void renderTriangle(Triangle*);
     void renderSphere(Sphere*);
@@ -31,6 +31,8 @@ public:
     void renderObject(const RenderObject&);
 
     void renderFloor();
+
+    std::vector<float> particlesToDensityField(const std::vector<Particle>& particles, const glm::ivec3& gridResolution, float gridSpacing);
 
     void swapBuffers(); // Swap front and back buffers
 
