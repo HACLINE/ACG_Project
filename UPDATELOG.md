@@ -1,6 +1,16 @@
+### 2024.10.29 10:30
+by wxb
+Done: 
+- Four method to render fluid: `POINT_CLOUD`, `VOXEL`, `MARCHING_CUBES`, `SPLASH_SURF` (default, using pack `splashsurf`). The first DEMO of mesh-like fluid simulation!
+
+TODO:
+- Still have strange scenes;
+- Cloth-fluid coupling.
+
 ### 2024.10.28 20:30
 by wxb
-Done: Render fluid using marching cube method implemented by C++.
+Done: 
+- Reconstruct fluid surface using marching cube method implemented by C++.
 
 TODO:
 - Still have artifacts. Need to debug, or implement using some libraries.

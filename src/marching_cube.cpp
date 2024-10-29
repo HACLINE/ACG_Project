@@ -318,7 +318,7 @@ void MarchingCubes::generateSurface(const std::vector<float>& densityField, cons
                              get_vertex_index(v2)});
     };
     vertices.clear(), indices.clear();
-    float isoLevel = 1.5f;
+    float isoLevel = 0.5f;
     for (int z = 0; z < gridResolution.z - 1; ++z) {
         for (int y = 0; y < gridResolution.y - 1; ++y) {
             for (int x = 0; x < gridResolution.x - 1; ++x) {

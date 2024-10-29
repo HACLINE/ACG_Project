@@ -6,7 +6,7 @@ render:
   title: WoBingWang
   clearcolor: [1.0, 1.0, 1.0, 1.0]
   camera:
-    eye: [25.0, 7.5, 25.0]
+    eye: [5.0, 1.5, 5.0]
     center: [0.0, 0.0, 0.0]
     up: [0.0, 1.0, 0.0]
 

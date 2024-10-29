@@ -109,39 +109,59 @@ void Renderer::renderRigidbody(Rigidbody* rigidbody) {
     renderMesh(rigidbody->getCurrentMesh());
 }
 
-void Renderer::renderFluid(Fluid* fluid, bool enable_mesh = true) {
-    if (!enable_mesh) {
+#define SPLASH_SURF 0
+#define MARCHING_CUBES 1
+#define POINT_CLOUD 2
+#define VOXEL 3
+
+void Renderer::renderFluid(Fluid* fluid, int method = SPLASH_SURF) {
+    if (method == POINT_CLOUD) {
         renderParticles(fluid->getParticles());
         return ;
     }
+
     const auto& particles = fluid->getParticles();
-    glm::ivec3 gridResolution(40, 40, 40);
-    float gridSpacing = 1.0f / 15.0f;
 
-    std::vector<float> densityField = particlesToDensityField(particles, gridResolution, gridSpacing);
+    if (method == VOXEL) {
+        glm::ivec3 gridResolution(40, 40, 40);
+        float gridSpacing = 1.0f / 15.0f;
+        std::vector<float> densityField = particlesToDensityField(particles, gridResolution, gridSpacing);
+        for (int z = 0; z < gridResolution.z; ++z) {
+            for (int y = 0; y < gridResolution.y; ++y) {
+                for (int x = 0; x < gridResolution.x; ++x) {
+                    int index = x + y * gridResolution.x + z * gridResolution.x * gridResolution.y;
+                    if (densityField[index] > 0.0f) {
+                        glPushMatrix();
+                        glTranslatef(x * gridSpacing - 1.0f, y * gridSpacing - 1.0f, z * gridSpacing - 1.0f);
+                        glColor3f(0.0f, 0.0f, 1.0f);
+                        glutSolidCube(gridSpacing);
+                        glPopMatrix();
+                    }
+                }
+            }
+        }
+    } else if (method == MARCHING_CUBES) {
+        glm::ivec3 gridResolution(40, 40, 40);
+        float gridSpacing = 1.0f / 15.0f;
+        std::vector<float> densityField = particlesToDensityField(particles, gridResolution, gridSpacing);
+        std::vector<Vertex> vertices;
+        std::vector<Face> indices;
+        MarchingCubes::generateSurface(densityField, gridResolution, gridSpacing, vertices, indices);
+        Mesh mesh{vertices, indices};
+        mesh_subdivision(mesh);
 
-    // for (int z = 0; z < gridResolution.z; ++z) {
-    //     for (int y = 0; y < gridResolution.y; ++y) {
-    //         for (int x = 0; x < gridResolution.x; ++x) {
-    //             int index = x + y * gridResolution.x + z * gridResolution.x * gridResolution.y;
-    //             if (densityField[index] > 0.0f) {
-    //                 glPushMatrix();
-    //                 glTranslatef(x * gridSpacing - 1.0f, y * gridSpacing - 1.0f, z * gridSpacing - 1.0f);
-    //                 glColor3f(0.0f, 0.0f, 1.0f);
-    //                 glutSolidCube(gridSpacing);
-    //                 glPopMatrix();
-    //             }
-    //         }
-    //     }
-    // }
+        renderMesh(mesh);
+    } else if (method == SPLASH_SURF) {
+        saveParticlesToPLY(particles, "particles.ply");
 
-    std::vector<Vertex> vertices;
-    std::vector<Face> indices;
-    MarchingCubes::generateSurface(densityField, gridResolution, gridSpacing, vertices, indices);
+        std::string command = "splashsurf reconstruct particles.ply -o mesh.obj -q -r=0.02 -l=2.0 -c=0.5 -t=0.6 --subdomain-grid=on --mesh-cleanup=on --mesh-smoothing-weights=on --mesh-smoothing-iters=25 --normals=on --normals-smoothing-iters=10";
 
-    Mesh mesh{vertices, indices};
-    mesh_subdivision(mesh);
-    renderMesh(mesh);
+        system(command.c_str());
+
+        Mesh mesh = loadMeshFromOBJ("mesh.obj");
+
+        renderMesh(mesh);
+    }
 }
 
 void Renderer::renderCloth(Cloth* cloth) {

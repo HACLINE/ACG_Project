@@ -7,3 +7,5 @@ bin
 figures
 config/_*.yaml
 *.avi
+particles.ply
+mesh.obj
