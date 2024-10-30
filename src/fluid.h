@@ -18,6 +18,8 @@ public:
     Fluid(const std::string&, const YAML::Node&, const std::string&, const YAML::Node&);
     ~Fluid();
 
+    virtual std::string getType() const { return "basic"; }
+
     virtual void update(float) = 0;
 
     void applyAcceleration(const glm::vec3& a, int i) { particles_[i].acceleration += a; }
@@ -60,6 +62,8 @@ class DFSPHFluid : public Fluid {
 public:
     DFSPHFluid(const std::string&, const YAML::Node&, const std::string&, const YAML::Node&, const YAML::Node&);
     ~DFSPHFluid();
+    std::string getType() const override { return "DFSPH"; }
+
     void applyGravity(const glm::vec3& g) {applyAcceleration(g);}
 
     void update(float dt) override;
@@ -125,6 +129,7 @@ class PICFLIPFluid : public Fluid {
 public:
     PICFLIPFluid(const std::string&, const YAML::Node&, const std::string&, const YAML::Node&, const YAML::Node&);
     ~PICFLIPFluid();
+    std::string getType() const override { return "PICFLIP"; }
 
     void update(float dt) override;
 

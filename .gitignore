@@ -6,6 +6,6 @@ out
 bin
 figures
 config/_*.yaml
-*.avi
+video.avi
 particles.ply
 mesh.obj

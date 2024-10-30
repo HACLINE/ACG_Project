@@ -128,6 +128,13 @@ void Simulation::update(float dt) {
     for (int i = 0; i < fluids_.size(); ++i) {
         fluids_[i]->update(dt);
     }
+
+    for (int i = 0; i < fluids_.size(); ++i) {
+        for (int j = 0; j < cloths_.size(); ++j) {
+            collision::fluid_cloth_collision(fluids_[i], cloths_[j], dt);
+        }
+    }
+
     for (int i = 0; i < cloths_.size(); ++i) {
         cloths_[i]->update(dt);
     }

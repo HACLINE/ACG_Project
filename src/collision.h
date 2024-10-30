@@ -3,10 +3,12 @@
 
 #include "rigid_body.h"
 #include "fluid.h"
+#include "cloth.h"
 
 namespace collision {
     void rigidbody_box_collision(Rigidbody*, const glm::vec3&, const glm::vec3&, float, float, const YAML::Node&);
     void fluid_box_collision(Fluid*, const glm::vec3&, const glm::vec3&, float, float, const YAML::Node&);
+    void fluid_cloth_collision(Fluid*, Cloth*, float);
 #ifdef HAS_CUDA
     void fluid_box_collision_CUDA(Fluid*, const glm::vec3&, const glm::vec3&, float, float, const YAML::Node&);
 #endif

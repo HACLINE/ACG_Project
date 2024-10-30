@@ -38,23 +38,24 @@ load:
       - init: cube # fromfile or cube
         name: test.fluid # this required for fromfile
         scale: [0.5, 1.0, 0.5]
-        num: [40, 80, 40]
+        num: [20, 40, 20]
         # num: [10, 20, 10]
-        radius: 0.01 # these three required for cube
-        mass: 6e-6
+        radius: 0.02 # these three required for cube
+        mass: 6e-3
         rho: 1000.0
   cloth: 
     cfg:
-      # - init: square # fromfile or square
-      #   name: test.cloth
-      #   scale: [10, 10]
-      #   num: [20, 20]
-      #   height: 5
-      #   mass: 0.1
-      #   radius: 0.02
-      #   ks: [1000.0, 1000.0, 1000.0]
-      #   kd: [0, 0, 0]
-      #   damping: 0.007
+      - init: square # fromfile or square
+        name: test.cloth
+        scale: [1.8, 1.8]
+        delta_y: 0.5
+        num: [80, 80]
+        height: -0.62
+        mass: 0.1
+        radius: 0.03
+        ks: [1000.0, 1000.0, 1000.0]
+        kd: [0, 0, 0]
+        damping: 0.0005
   wall:
     cfg:
       # - type: triangle
@@ -93,14 +94,14 @@ load:
 
 video:
   fps: 20
-  sps: 20
-  length: 5
+  sps: 60
+  length: 6
 
 simulation:
   box: 
-    min: [-1.0, -1.0, -1.0]
+    min: [-1.0, -2.2, -1.0]
     max: [1.0, 1.0, 1.0]
-  resolution: [60, 60, 60]
+  resolution: [30, 30, 30]
 
 cuda:
   enabled: true

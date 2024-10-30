@@ -18,11 +18,11 @@ public:
     Renderer(YAML::Node config);
     void initializeOpenGL(YAML::Node config);
 
-    void renderMesh(const Mesh&, bool);
+    void renderMesh(const Mesh&, glm::vec3);
     void renderParticles(const std::vector<Particle>&);
 
     void renderRigidbody(Rigidbody*);
-    void renderFluid(Fluid*, bool);
+    void renderFluid(Fluid*, int);
     void renderCloth(Cloth*);
     void renderTriangle(Triangle*);
     void renderSphere(Sphere*);

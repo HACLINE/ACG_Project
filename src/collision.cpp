@@ -1,6 +1,7 @@
 #include "collision.h"
 #include "geometry.h"
 #include <iostream>
+#include "spatial_hash.h"
 
 //Impulse-based collision response
 void collision::rigidbody_box_collision(Rigidbody* rigidbody, const glm::vec3& box_min, const glm::vec3& box_max, float restitution, float friction, const YAML::Node& cuda) {
@@ -108,3 +109,148 @@ void collision::fluid_box_collision(Fluid* fluid, const glm::vec3& box_min, cons
         }
     }
 }
+
+void collision::fluid_cloth_collision(Fluid* fluid, Cloth* cloth, float dt) {
+    std::string fluid_type = fluid->getType();
+    std::string cloth_type = cloth->getType();
+
+if (fluid_type == "PICFLIP" && cloth_type == "XPBD") {
+    cloth->computeNormals();
+    std::vector<Particle>& particles = fluid->getParticles();
+    std::vector<Particle>& cloth_particles = cloth->getParticles();
+    std::vector<glm::vec3>& cloth_old_positions = cloth->getOldPositions();
+    std::vector<glm::vec3>& cloth_normals = cloth->getVertexNormals();
+    assert(cloth_old_positions.size() == cloth_particles.size() && particles.size() > 0 && cloth_particles.size() > 0);
+    float r_c = cloth_particles[0].radius;
+    float r_p = particles[0].radius;
+    float r = r_c + r_c;
+
+    // std::cout << "r " << r << std::endl;
+
+    auto collide_particles = [&](int fluid_idx, int cloth_idx) {
+        glm::vec3 cp = cloth_particles[cloth_idx].position;
+        glm::vec3 fp = particles[fluid_idx].position;
+        glm::vec3 dir = cp - fp;
+        float dist = glm::length(dir);
+        if (dist < r) {
+            glm::vec3 normal = cloth_normals[cloth_idx];
+            if (glm::dot(dir, normal) < 0.0f) {
+                normal = -normal;
+            }
+            glm::vec3 v0 = (cp - cloth_old_positions[cloth_idx]) / dt;
+            glm::vec3 v1 = particles[fluid_idx].velocity;
+            float w0 = 1.0f / cloth_particles[cloth_idx].mass;
+            float w1 = 1.0f / particles[fluid_idx].mass;
+            float iconstraintMass = 1.0f / (w0 + w1);
+            glm::vec3 dv = v0 - v1;
+            if (glm::dot(dv, normal) < 0.0f) {
+                float jn = - glm::dot(dv, normal) * iconstraintMass;
+                v0 += normal * (jn * w0);
+                v1 -= normal * (jn * w1);
+                particles[fluid_idx].velocity = v1;
+            }
+            float pen = r - glm::dot(cp, normal) + glm::dot(fp, normal);
+            pen *= iconstraintMass;
+            cp += normal * pen * w0;
+            cloth_particles[cloth_idx].position = cp;
+            cloth_old_positions[cloth_idx] = cp - v0 * dt;
+            particles[fluid_idx].position = fp - normal * pen * w1;
+        }
+    };
+
+    SpatialHash hash_table(r, 300, cloth_particles);
+    hash_table.update();
+    for (int i = 0; i < particles.size(); ++i) {
+        std::vector<int> neighbors;
+        hash_table.getNeighbors(particles[i].position, neighbors);
+        for (int j : neighbors) {
+            collide_particles(i, j);
+        }
+    }
+
+} else {
+    std::cout << "[Simulation ERROR] Unsupported fluid-cloth collision of fluid type: " << fluid_type << ", cloth type: " << cloth_type << std::endl;
+    exit(1);
+}
+}
+
+/*
+void CollideParticles(
+	uint fluid_idx, float3* fluid_positions, float3* fluid_velocities,
+	uint cloth_idx, float4* cloth_positions, float4* cloth_positions_old, float4* cloth_normals)
+{
+	
+	float4 cp = cloth_positions[cloth_idx];
+	float3 fp = fluid_positions[fluid_idx];
+
+	float3 dir = make_float3(cp.x - fp.x, cp.y - fp.y, cp.z - fp.z);
+	//float3 dir = make_float3(fp.x - cp.x, fp.y - cp.y, fp.z - cp.z);
+	float dist = dir.x * dir.x + dir.y * dir.y + dir.z * dir.z;
+
+	const float rsq = pfParams.particle_size * pfParams.particle_size * 4.0f;
+
+	if (dist < rsq)
+	{
+		//DO COLLISION RESPONSE
+		//dist = sqrtf(dist);
+		//dir = dir / dist;
+
+
+		float3 normal = tof3(cloth_normals[cloth_idx]);
+		if (float3_dot(dir, normal) < 0.0f)
+			normal *= -1.0f;
+
+
+		/////////
+        float3 dv = 
+
+		dist -= pfParams.particle_size;
+
+		float w = cp.w + cp.w;// pfParams.particle_iweight;
+		dir *= (dist / w);
+
+		cp.x += dir.x * cp.w;
+		cp.y += dir.y * cp.w;
+		cp.z += dir.z * cp.w;
+
+		fp -= dir * cp.w;// pfParams.particle_iweight;
+        ///////////////////
+
+		float4 cpo = cloth_positions_old[cloth_idx];
+		float3 v0 = (tof3(cp) - tof3(cpo)) * pfParams.idt;
+		float3 v1 = fluid_velocities[fluid_idx];
+
+		float w0 = cp.w;
+		float w1 = pfParams.particle_iweight;
+		float iconstraintMass = 1.0f / (w0 + w1);
+
+		float3 dv = v0 - v1;
+		if (float3_dot(dv, normal) < 0.0f)
+		{
+			//Collision Resolution
+			float jn = -(1.0f * float3_dot(dv, normal)) * iconstraintMass;
+
+			v0 += normal * (jn * w0);
+			v1 -= normal * (jn * w1);
+						
+			fluid_velocities[fluid_idx] = v1;
+			cloth_positions_old[cloth_idx] = cpo;
+		}
+
+		float pen = pfParams.particle_size * 2.0f - (float3_dot(make_float3(cp.x, cp.y, cp.z), normal) - float3_dot(fp, normal));
+		pen *= iconstraintMass;
+
+		cp.x += normal.x * pen * w0;
+		cp.y += normal.y * pen * w0;
+		cp.z += normal.z * pen * w0;
+
+        cpo.x = cp.x - v0.x * pfParams.dt;
+		cpo.y = cp.y - v0.y * pfParams.dt;
+		cpo.z = cp.z - v0.z * pfParams.dt;
+
+		fluid_positions[fluid_idx] = fp - normal * (pen * w1);
+		cloth_positions[cloth_idx] = cp;
+		cloth_positions_old[cloth_idx] = cpo;
+	}
+}
+*/

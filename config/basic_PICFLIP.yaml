@@ -1,7 +1,7 @@
 particles_per_cell: 2.5
-scheduler_scale: 5
+scheduler_scale: 2
 scheduler_temperature: 0.1
-jacobi_iters: 50
+jacobi_iters: 20
 flipness: 0.99
-vel_discount: 1.00
+vel_discount: 1.0
 weight_inf: 0.5

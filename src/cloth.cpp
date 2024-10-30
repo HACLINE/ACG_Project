@@ -19,7 +19,7 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, float kernel_rad
             if (opt == 0) { // particle
                 float x, y, z, r, m;
                 fin >> x >> y >> z >> r >> m;
-                particles_.push_back(Particle{glm::vec3(x, y, z), glm::vec3(0.0f), glm::vec3(0.0f), r, m});
+                addVertex(glm::vec3(x, y, z), r, m);
             }
             else if (opt == 1) { // spring
                 float k_s, k_d, rest_length;
@@ -27,10 +27,10 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, float kernel_rad
                 fin >> p1 >> p2 >> k_s >> k_d >> rest_length >> type;
                 springs_.push_back(Spring{p1, p2, k_s, k_d, rest_length, type});
             }
-            else if (opt == 2) { // face
+            else if (opt == 2) { // face (should add after particle!)
                 int p1, p2, p3;
                 fin >> p1 >> p2 >> p3;
-                faces_.push_back(Face{p1, p2, p3});
+                addFace(Face{p1, p2, p3});
             }
         }
         fixed_ = std::vector<bool>(particles_.size(), false);
@@ -47,9 +47,10 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, float kernel_rad
               z_start = - config["scale"][1].as<float>() / 2.0;
         float y_pos = config["height"].as<float>();
         float radius = config["radius"].as<float>();
+        float dy = config["delta_y"].as<float>();
         for (int i = 0; i < x_num; ++i) {
             for (int j = 0; j < z_num; ++j) {
-                particles_.push_back(Particle{glm::vec3(x_start + i * x_gap, y_pos, z_start + j * z_gap), glm::vec3(0.0f), glm::vec3(0.0f), radius, mass});
+                addVertex(glm::vec3(x_start + i * x_gap, y_pos + dy * (float(x_num) / 2.0 - i) / float(x_num), z_start + j * z_gap), radius, mass);
             }
         }
 
@@ -90,17 +91,17 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, float kernel_rad
         // init faces
         for (int i = 0; i < x_num - 1; ++i) {
             for (int j = 0; j < z_num - 1; ++j) {
-                faces_.push_back(Face{((i+1) * z_num) + j, (i * z_num) + j, ((i+1) * z_num) + (j+1)});
-                faces_.push_back(Face{(i * z_num) + (j+1), ((i+1) * z_num) + (j+1), (i * z_num) + j});
+                addFace(Face{((i+1) * z_num) + j, (i * z_num) + j, ((i+1) * z_num) + (j+1)});
+                addFace(Face{(i * z_num) + (j+1), ((i+1) * z_num) + (j+1), (i * z_num) + j});
             }
         }
 
         fixed_ = std::vector<bool>(particles_.size(), false);
         // for (int i = 0; i < z_num; ++i) fixed_[i] = fixed_[(x_num-1) * z_num + i] = true;
         // for (int i = 0; i < x_num; ++i) fixed_[i * z_num] = fixed_[i * z_num + (z_num-1)] = true;
-        // fixed_[0] = fixed_[z_num - 1] = fixed_[particles_.size() - 1] = fixed_[particles_.size() - z_num] = true;
-        fixed_[0] = fixed_[z_num - 1] = true;
-        particles_[0].mass = particles_[z_num - 1].mass = 999999.0f;
+        fixed_[0] = fixed_[z_num - 1] = fixed_[particles_.size() - 1] = fixed_[particles_.size() - z_num] = true;
+        // fixed_[0] = fixed_[z_num - 1] = true;
+        particles_[0].mass = particles_[z_num - 1].mass = particles_[particles_.size() - 1].mass = particles_[particles_.size() - z_num].mass = 999999.0f;
 
         std::cout << "[Load] Cloth: Load " << particles_.size() << " particles and " << springs_.size() << " springs" << std::endl;
     }
@@ -109,11 +110,36 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, float kernel_rad
     num_springs_ = springs_.size();
     num_faces_ = faces_.size();
     damping_ = config["damping"].as<float>();
-    for (int i = 0; i < num_particles_; ++i) {
-        force_buffer_.push_back(glm::vec3(0.0f));
-        prev_acceleration_.push_back(glm::vec3(0.0f));
-    }
     // std::cout << "KR: "<<kernel_radius<<", HTS: "<<hash_table_size<<", NP: "<<num_particles_<<std::endl;
+}
+
+void Cloth::addVertex(const glm::vec3& pos, float r, float m) {
+    particles_.push_back(Particle{pos, glm::vec3(0.0f), glm::vec3(0.0f), r, m});
+    force_buffer_.push_back(glm::vec3(0.0f));
+    prev_acceleration_.push_back(glm::vec3(0.0f));
+    vertex_norms_.push_back(glm::vec3(0.0f));
+}
+
+void Cloth::addFace(const Face& face) {
+    faces_.push_back(face);
+    face_norms_.push_back(glm::normalize(glm::cross(particles_[face.v2].position - particles_[face.v1].position, particles_[face.v3].position - particles_[face.v1].position)));
+}
+
+void Cloth::computeNormals() {
+    for (int i = 0; i < num_faces_; ++i) {
+        face_norms_[i] = glm::normalize(glm::cross(particles_[faces_[i].v2].position - particles_[faces_[i].v1].position, particles_[faces_[i].v3].position - particles_[faces_[i].v1].position));
+    }
+    for (int i = 0; i < num_particles_; ++i) {
+        vertex_norms_[i] = glm::vec3(0.0f);
+    }
+    for (int i = 0; i < num_faces_; ++i) {
+        vertex_norms_[faces_[i].v1] += face_norms_[i];
+        vertex_norms_[faces_[i].v2] += face_norms_[i];
+        vertex_norms_[faces_[i].v3] += face_norms_[i];
+    }
+    for (int i = 0; i < num_particles_; ++i) {
+        vertex_norms_[i] = glm::normalize(vertex_norms_[i]);
+    }
 }
 
 void Cloth::setFix(int ind, bool fixed) {

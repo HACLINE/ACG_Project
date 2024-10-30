@@ -1,3 +1,13 @@
+### 2024.10.30 15:00
+by wxb
+Done:
+- Cloth-fluid coupling 1.0 (collision check using spatial hash; collision update without friction).
+
+TODO:
+- Have permeation problem, need to be fixed;
+- fluid looks bad after collide with cloth and fall to the ground. Need to check the reason.
+- Other coupling (friction) or other coupling method can be implemented.
+
 ### 2024.10.29 10:30
 by wxb
 Done: 

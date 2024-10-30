@@ -11,6 +11,7 @@ class Cloth {
 public:
     Cloth(const std::string& path, const YAML::Node& config, float kernel_radius, int hash_table_size);
     ~Cloth();
+    virtual std::string getType() const { return "mass_spring"; }
 
     virtual void update(float);
     void computeForces();
@@ -27,12 +28,21 @@ public:
     void applyForce(const glm::vec3& f) { for (int i = 0; i < num_particles_; ++i) applyForce(f, i); }
     void setFix(int ind, bool fixed);
 
-    inline const std::vector<Particle>& getParticles() const { return particles_; }
+    void addVertex(const glm::vec3& pos, float r, float m);
+    void addFace(const Face& face);
+    
+    void computeNormals();
+
+    std::vector<Particle>& getParticles() { return particles_; }
+    std::vector<glm::vec3>& getFaceNormals() { return face_norms_; }
+    std::vector<glm::vec3>& getVertexNormals() { return vertex_norms_; }
     inline const int getNumParticles() const { return num_particles_; }
     inline const int getNumFaces() const { return num_faces_; }
     inline const int getNumSprings() const { return num_springs_; }
     
     Mesh getMesh();
+
+    virtual std::vector<glm::vec3>& getOldPositions() { assert(false); }
 
 protected:
     int num_x_, num_z_;
@@ -44,6 +54,8 @@ protected:
     std::vector<glm::vec3> prev_acceleration_;
     std::vector<glm::vec3> force_buffer_;
 
+    std::vector<glm::vec3> face_norms_, vertex_norms_;
+
     float damping_;
     SpatialHash hash_table_;
 };
@@ -52,6 +64,7 @@ class XPBDCloth : public Cloth {
 public:
     XPBDCloth(const std::string& path, const YAML::Node& config, float kernel_radius, int hash_table_size);
     ~XPBDCloth();
+    std::string getType() const override { return "XPBD"; }
 
     void update(float dt) override;
 
@@ -60,6 +73,8 @@ public:
 
     void solveDistanceConstraint(float dt);
     void solveBendingConstraint(float dt);
+
+    std::vector<glm::vec3>& getOldPositions() override { return p_; }
 
 private:
     int num_distance_constraints_, num_bending_constraints_;

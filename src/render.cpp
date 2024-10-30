@@ -62,7 +62,7 @@ void Renderer::initializeOpenGL(YAML::Node config) {
     glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
 }
 
-void Renderer::renderMesh(const Mesh& mesh, bool transparent = false) {
+void Renderer::renderMesh(const Mesh& mesh, glm::vec3 color = glm::vec3(0.0f, 0.8f, 0.2f)) {
     glBegin(GL_TRIANGLES);
     for (const auto& face : mesh.faces) {
         const glm::vec3& v1 = mesh.vertices[face.v1].position;
@@ -72,8 +72,7 @@ void Renderer::renderMesh(const Mesh& mesh, bool transparent = false) {
         glm::vec3 normal = glm::normalize(glm::cross(v2 - v1, v3 - v1));
         glNormal3f(normal.x, normal.y, normal.z);
 
-        if (!transparent) glColor3f(0.0f, 0.8f, 0.2f);
-        else glColor4f(0.0f, 0.8f, 0.2f, 0.7f);
+        glColor3f(color.x, color.y, color.z);
         glVertex3f(v1.x, v1.y, v1.z);
         glVertex3f(v2.x, v2.y, v2.z);
         glVertex3f(v3.x, v3.y, v3.z);
@@ -154,7 +153,7 @@ void Renderer::renderFluid(Fluid* fluid, int method = SPLASH_SURF) {
     } else if (method == SPLASH_SURF) {
         saveParticlesToPLY(particles, "particles.ply");
 
-        std::string command = "splashsurf reconstruct particles.ply -o mesh.obj -q -r=0.02 -l=2.0 -c=0.5 -t=0.6 --subdomain-grid=on --mesh-cleanup=on --mesh-smoothing-weights=on --mesh-smoothing-iters=25 --normals=on --normals-smoothing-iters=10";
+        std::string command = "splashsurf reconstruct particles.ply -o mesh.obj -q -r=0.03 -l=2.0 -c=0.5 -t=0.6 --subdomain-grid=on --mesh-cleanup=on --mesh-smoothing-weights=on --mesh-smoothing-iters=25 --normals=on --normals-smoothing-iters=10";
 
         system(command.c_str());
 
@@ -165,7 +164,7 @@ void Renderer::renderFluid(Fluid* fluid, int method = SPLASH_SURF) {
 }
 
 void Renderer::renderCloth(Cloth* cloth) {
-    renderMesh(cloth->getMesh());
+    renderMesh(cloth->getMesh(), glm::vec3(0.8f, 0.0f, 0.0f));
 }
 
 void Renderer::renderTriangle(Triangle* triangle) {
