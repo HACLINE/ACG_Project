@@ -140,7 +140,9 @@ int main(int argc, char* argv[]) {
     Renderer renderer(config["render"]);
     YAML::Node load_config = config["load"];
     load_config["cwd"] = config["cwd"];
-    Simulation simulation(load_config, config["simulation"], config["cuda"]);
+    config["blender"]["render"] = config["render"];
+    std::cout<<"3r98u9283ru"<<std::endl;
+    Simulation simulation(load_config, config["simulation"], config["cuda"], config["blender"]);
 
     std::cout << "[main] Simulation loaded: " << simulation.getNumRigidbodies() << " rigid bodies, " << simulation.getNumFluids() << " fluids, " << simulation.getNumCloths() << " cloths, " << simulation.getNumWalls() << " walls." << std::endl;
 
@@ -204,7 +206,15 @@ int main(int argc, char* argv[]) {
             renderer.renderSimulation(simulation);
 
             std::string file_name = figuresPath + "/frame_" + intToString(_, 6) + ".png";
-            saveFrame(file_name, config["render"]["windowsize"][0].as<int>(), config["render"]["windowsize"][1].as<int>());
+
+            if (config["blender"]["enabled"]) {
+                std::ifstream src("rendered.png", std::ios::binary);
+                std::ofstream dst(file_name, std::ios::binary);
+                dst << src.rdbuf();
+            }
+            else {
+                saveFrame(file_name, config["render"]["windowsize"][0].as<int>(), config["render"]["windowsize"][1].as<int>());
+            }
 
             renderer.swapBuffers();
 

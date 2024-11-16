@@ -30,24 +30,24 @@ void Renderer::initializeOpenGL(YAML::Node config) {
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(config["windowsize"][0].as<int>(), config["windowsize"][1].as<int>());
     glutCreateWindow(config["title"].as<std::string>().c_str());
-
+    
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+    
     glViewport(config["viewport"][0].as<int>(), config["viewport"][1].as<int>(), config["viewport"][2].as<int>(), config["viewport"][3].as<int>());
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluPerspective(config["perspective"]["fovy"].as<float>(), config["perspective"]["aspect"].as<float>(), config["perspective"]["znear"].as<float>(), config["perspective"]["zfar"].as<float>());
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-
+    
     glClearColor(config["clearcolor"][0].as<float>(), config["clearcolor"][1].as<float>(), config["clearcolor"][2].as<float>(), config["clearcolor"][3].as<float>());
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
-
+    
     gluLookAt(config["camera"]["eye"][0].as<float>(), config["camera"]["eye"][1].as<float>(), config["camera"]["eye"][2].as<float>(), config["camera"]["center"][0].as<float>(), config["camera"]["center"][1].as<float>(), config["camera"]["center"][2].as<float>(), config["camera"]["up"][0].as<float>(), config["camera"]["up"][1].as<float>(), config["camera"]["up"][2].as<float>());
-
+    
     GLfloat light_position[] = {config["light"]["position"][0].as<float>(), config["light"]["position"][1].as<float>(), config["light"]["position"][2].as<float>(), config["light"]["position"][3].as<float>()};
     GLfloat light_ambient[] = {config["light"]["ambient"][0].as<float>(), config["light"]["ambient"][1].as<float>(), config["light"]["ambient"][2].as<float>(), config["light"]["ambient"][3].as<float>() };
     GLfloat light_diffuse[] = {config["light"]["diffuse"][0].as<float>(), config["light"]["diffuse"][1].as<float>(), config["light"]["diffuse"][2].as<float>(), config["light"]["diffuse"][3].as<float>() };
@@ -185,20 +185,48 @@ void Renderer::renderSphere(Sphere* sphere) {
 }
 
 void Renderer::renderSimulation(const Simulation& simulation) {
-    for (int i = 0; i < simulation.getNumRigidbodies(); i++) {
-        renderRigidbody(simulation.getRigidbody(i));
+    YAML::Node blender = simulation.getBlenderConfig();
+    if (blender["enabled"].as<bool>() == false) {
+        for (int i = 0; i < simulation.getNumRigidbodies(); i++) {
+            renderRigidbody(simulation.getRigidbody(i));
+        }
+        for (int i = 0; i < simulation.getNumFluids(); i++) {
+            renderFluid(simulation.getFluid(i));
+        }
+        for (int i = 0; i < simulation.getNumCloths(); i++) {
+            renderCloth(simulation.getCloth(i));
+        }
+        for (int i = 0; i < simulation.getNumWalls(); i++) {
+            renderTriangle(simulation.getWall(i));
+        }
+        for (int i = 0; i < simulation.getNumSpheres(); i++) {
+            renderSphere(simulation.getSphere(i));
+        }
     }
-    for (int i = 0; i < simulation.getNumFluids(); i++) {
-        renderFluid(simulation.getFluid(i));
-    }
-    for (int i = 0; i < simulation.getNumCloths(); i++) {
-        renderCloth(simulation.getCloth(i));
-    }
-    for (int i = 0; i < simulation.getNumWalls(); i++) {
-        renderTriangle(simulation.getWall(i));
-    }
-    for (int i = 0; i < simulation.getNumSpheres(); i++) {
-        renderSphere(simulation.getSphere(i));
+    else {
+        if (simulation.getNumRigidbodies() == 0 && simulation.getNumFluids() == 1 && simulation.getNumCloths() == 1) {
+            const auto& fluid_particles = simulation.getFluid(0)->getParticles();
+            saveParticlesToPLY(fluid_particles, "particles.ply");
+
+            std::string command = "splashsurf reconstruct particles.ply -o fluid_mesh.obj -q -r=0.03 -l=2.0 -c=0.5 -t=0.6 --subdomain-grid=on --mesh-cleanup=on --mesh-smoothing-weights=on --mesh-smoothing-iters=25 --normals=on --normals-smoothing-iters=10";
+
+            system(command.c_str());
+
+            Mesh cloth_mesh = simulation.getCloth(0)->getMesh();
+            saveMeshToOBJ(cloth_mesh, "cloth_mesh.obj");
+
+            command = "blender --python src/render.py";
+
+            system(command.c_str());
+        }
+        else {
+            std::cerr << "[Render ERROR] Blender rendering does not support the following settings: " << std::endl;
+            std::cerr << "Rigidbodies: " << simulation.getNumRigidbodies() << std::endl;
+            std::cerr << "Fluids: " << simulation.getNumFluids() << std::endl;
+            std::cerr << "Cloths: " << simulation.getNumCloths() << std::endl;
+            std::cerr << "Stopping simulation." << std::endl;
+            exit(1);
+        }
     }
 }
 

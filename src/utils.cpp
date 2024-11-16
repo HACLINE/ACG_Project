@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <filesystem>
 
 std::ostream& operator<<(std::ostream& os, const glm::vec3& v) {
     os << "(" << v.x << ", " << v.y << ", " << v.z << ")";
@@ -83,4 +84,22 @@ Mesh loadMeshFromOBJ(const std::string& filename) {
 
     ifs.close();
     return mesh;
+}
+
+void saveMeshToOBJ(const Mesh& mesh, const std::string& filename) {
+    std::ofstream ofs(filename);
+    if (!ofs.is_open()) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return;
+    }
+
+    for (const auto& vertex : mesh.vertices) {
+        ofs << "v " << vertex.position.x << " " << vertex.position.y << " " << vertex.position.z << "\n";
+    }
+
+    for (const auto& face : mesh.faces) {
+        ofs << "f " << face.v1 + 1 << " " << face.v2 + 1 << " " << face.v3 + 1 << "\n";
+    }
+
+    ofs.close();
 }

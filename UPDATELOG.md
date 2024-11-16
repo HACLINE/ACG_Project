@@ -1,3 +1,8 @@
+### 2024.11.16 13:30
+by wxb
+Done:
+- Render fluid-cloth coupling using `blender`. Implemented with python: see `src/render.py`.
+
 ### 2024.10.30 15:00
 by wxb
 Done:

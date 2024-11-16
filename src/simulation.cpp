@@ -5,7 +5,7 @@
 
 Simulation::Simulation() {}
 
-Simulation::Simulation(YAML::Node load, YAML::Node physics, YAML::Node cuda): cuda_(cuda) {
+Simulation::Simulation(YAML::Node load, YAML::Node physics, YAML::Node cuda, YAML::Node blender): cuda_(cuda), blender_(blender) {
     std::string rigidbody_path = load["cwd"].as<std::string>() + load["rigidbody"]["path"].as<std::string>() + "/";
     std::string fluid_path = load["cwd"].as<std::string>() + load["fluid"]["path"].as<std::string>() + "/";
     std::string cloth_path = load["cwd"].as<std::string>() + load["cloth"]["path"].as<std::string>() + "/";

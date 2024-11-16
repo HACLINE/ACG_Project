@@ -11,7 +11,7 @@
 class Simulation {
     public:
         Simulation();
-        Simulation(YAML::Node, YAML::Node, YAML::Node);
+        Simulation(YAML::Node, YAML::Node, YAML::Node, YAML::Node);
         ~Simulation();
 
         void update(float dt);
@@ -37,6 +37,8 @@ class Simulation {
         inline const std::vector<Cloth*>& getCloths() const { return cloths_; }
         inline const std::vector<Triangle*>& getWalls() const { return walls_; }
         inline const std::vector<Sphere*>& getSpheres() const { return spheres_; }
+        
+        inline const YAML::Node getBlenderConfig() const { return blender_; }
 
         RenderObject getRenderObject(void);
     
@@ -53,6 +55,8 @@ class Simulation {
         float restitution_, friction_;
 
         YAML::Node cuda_;
+
+        YAML::Node blender_;
 };
 
 #endif

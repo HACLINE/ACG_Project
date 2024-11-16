@@ -17,5 +17,7 @@ void saveParticlesToPLY(const std::vector<Particle>& particles, const std::strin
 
 Mesh loadMeshFromOBJ(const std::string& filename);
 
+void saveMeshToOBJ(const Mesh& mesh, const std::string& filename);
+
 
 #endif

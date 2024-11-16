@@ -60,3 +60,6 @@ simulation:
 cuda:
   enabled: false
   block_size: 512
+
+blender:
+  enabled: false
