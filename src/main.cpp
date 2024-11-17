@@ -1,5 +1,5 @@
 /*
-./main --config [config].yaml --renderthread(optional)
+./main --config [config].yaml
 
 config: see config/ for examples.
 */
@@ -21,82 +21,25 @@ config: see config/ for examples.
 #include <atomic>
 #include <map>
 #include <chrono>
+#include <cstdlib>
 
 #include "yaml.h"
 #include "render.h"
 #include "simulation.h"
 #include "genvideo.h"
 
-#ifndef STB_IMAGE_WRITE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#endif
-
-#include "stb_image_write.h"
-
-void saveFrame(const std::string& filename, int width, int height) {
-    std::vector<unsigned char> buffer(width * height * 3);
-    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer.data());
-    stbi_flip_vertically_on_write(1);
-    stbi_write_png(filename.c_str(), width, height, 3, buffer.data(), width * 3);
-}
-
-std::string intToString(int x, int len) {
-    std::string s = std::to_string(x);
-    while (s.size() < len) {
-        s = "0" + s;
-    }
-    return s;
-}
 
 std::queue<RenderObject> render_queue;
 std::mutex render_mutex;
 std::condition_variable render_cv;
 std::atomic<bool> done(false);
 std::string figuresPath = "/figures";
-
-void renderThread(Renderer& renderer, const YAML::Node& config, Simulation& simulation, int FPS, int SPS, int VIDEO_LENGTH) {
-    renderer.initializeOpenGL(config["render"]);
-    int frame = 0;
-    auto last = std::chrono::high_resolution_clock::now();
-
-    while (!done) {
-        std::unique_lock<std::mutex> lock(render_mutex);
-        render_cv.wait(lock, [last, FPS] {
-            return (!render_queue.empty() || done) && 
-                   (std::chrono::high_resolution_clock::now() - last > std::chrono::milliseconds(static_cast<int>(1000.0f / FPS)));
-        });
-
-        while (!render_queue.empty()) {
-            RenderObject render_object = render_queue.front();
-            render_queue.pop();
-            lock.unlock();
-
-            std::cout << "[Render] Rendering frame " << frame << std::endl;
-
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            // renderer.renderFloor();
-            renderer.renderObject(render_object);
-
-            std::string file_name = figuresPath + "/frame_" + intToString(frame, 6) + ".png";
-            saveFrame(file_name, config["render"]["windowsize"][0].as<int>(), config["render"]["windowsize"][1].as<int>());
-
-            renderer.swapBuffers();
-
-            GLenum err;
-            while ((err = glGetError()) != GL_NO_ERROR) {
-                std::cerr << "[Error] OpenGL error: " << err << std::endl;
-            }
-
-            lock.lock();
-            ++frame;
-            last = std::chrono::high_resolution_clock::now();
-        }
-    }
-    generateVideo(config["video"], figuresPath);
-}
+std::string renderPath = "/render";
 
 int main(int argc, char* argv[]) {
+
+    std::string command = "rm -rf ./.cache && mkdir ./.cache && mkdir ./.cache/tmp";
+    system(command.c_str());
 
     std::cout << "[main] Starting simulation" << std::endl;
 
@@ -121,6 +64,11 @@ int main(int argc, char* argv[]) {
     // if cwd doesn't end up with '/build'
     if (cwd_str.substr(cwd_str.size() - 6) != "/build") cwd_str += "/build";
     figuresPath = cwd_str + figuresPath;
+    renderPath = cwd_str + renderPath;
+
+    setenv("CONFIG", args["config"].c_str(), 1);
+    setenv("FIGURES", figuresPath.c_str(), 1);
+    setenv("RENDER", renderPath.c_str(), 1);
 
     if (!config["cuda"]["enabled"].as<bool>()) {
         std::cout << "[CUDA] CUDA disabled" << std::endl;
@@ -136,12 +84,10 @@ int main(int argc, char* argv[]) {
     }
 #endif
 
-    config["render"]["thread"] = args.find("renderthread") != args.end();
-    Renderer renderer(config["render"]);
+    Renderer renderer(config["render"], figuresPath);
     YAML::Node load_config = config["load"];
     load_config["cwd"] = config["cwd"];
     config["blender"]["render"] = config["render"];
-    std::cout<<"3r98u9283ru"<<std::endl;
     Simulation simulation(load_config, config["simulation"], config["cuda"], config["blender"]);
 
     std::cout << "[main] Simulation loaded: " << simulation.getNumRigidbodies() << " rigid bodies, " << simulation.getNumFluids() << " fluids, " << simulation.getNumCloths() << " cloths, " << simulation.getNumWalls() << " walls." << std::endl;
@@ -151,83 +97,45 @@ int main(int argc, char* argv[]) {
     assert(SPS % FPS == 0);
     float VIDEO_LENGTH = config["video"]["length"].as<float>();
 
+    std::cout << "[Generate] Generating images into ./figures ... " << std::endl;
 
-    if (args.find("renderthread") != args.end()) {
+    float barcount = 0, bartotal = 100;
 
-        std::cout << "[Generate] Generating images into " << figuresPath << " ..." << std::endl;
-
-        std::thread render_thread(renderThread, std::ref(renderer), std::ref(config), std::ref(simulation), FPS, SPS, VIDEO_LENGTH);
-
-        for (int _ = 0; _ < SPS * VIDEO_LENGTH; _++) {
-            std::cout << "[Progress] Step " << _ << " / " << SPS * VIDEO_LENGTH << std::endl;
+    for (int _ = 0; _ < SPS * VIDEO_LENGTH; _++) {
+        while ((barcount + 1.0) * SPS * VIDEO_LENGTH <= bartotal * _ - 0.01) {
+            barcount++;
+            std::cout << "#";
+            if (int(barcount) % 5 == 0) std::cout<<barcount;
             std::cout.flush();
-            simulation.update(1.0f / SPS);
-
-            if (_ % (SPS / FPS) == 0) {
-                std::unique_lock<std::mutex> lock(render_mutex);
-                render_queue.push(simulation.getRenderObject());
-                lock.unlock();
-                render_cv.notify_one();
-            }
         }
 
-        done = true;
-        render_cv.notify_all();
-        render_thread.join();
+        // if (_ == SPS * 3.0) { // loose the first particle in 3 seconds
+        //     Cloth* cloth = simulation.getCloth(0);
+        //     cloth->setFix(0, false);
+        //     cloth->setFix(19, false);
+        // }
 
-    } else {
-
-        std::cout << "[Generate] Generating images into ./figures ... " << std::endl;
-
-        float barcount = 0, bartotal = 100;
-
-        for (int _ = 0; _ < SPS * VIDEO_LENGTH; _++) {
-            while ((barcount + 1.0) * SPS * VIDEO_LENGTH <= bartotal * _ - 0.01) {
-                barcount++;
-                std::cout << "#";
-                if (int(barcount) % 5 == 0) std::cout<<barcount;
-                std::cout.flush();
-            }
-
-            // if (_ == SPS * 3.0) { // loose the first particle in 3 seconds
-            //     Cloth* cloth = simulation.getCloth(0);
-            //     cloth->setFix(0, false);
-            //     cloth->setFix(19, false);
-            // }
-
-            simulation.update(1.0f / SPS);
-            if (_ % (SPS / FPS) != 0) {
-                continue;
-            }
-
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            // renderer.renderFloor();
-            renderer.renderSimulation(simulation);
-
-            std::string file_name = figuresPath + "/frame_" + intToString(_, 6) + ".png";
-
-            if (config["blender"]["enabled"]) {
-                std::ifstream src("rendered.png", std::ios::binary);
-                std::ofstream dst(file_name, std::ios::binary);
-                dst << src.rdbuf();
-            }
-            else {
-                saveFrame(file_name, config["render"]["windowsize"][0].as<int>(), config["render"]["windowsize"][1].as<int>());
-            }
-
-            renderer.swapBuffers();
-
-            GLenum err;
-            while ((err = glGetError()) != GL_NO_ERROR) {
-                std::cerr << std::endl << "[Error] OpenGL error: " << err << std::endl;
-            }
+        simulation.update(1.0f / SPS);
+        if (_ % (SPS / FPS) != 0) {
+            continue;
         }
 
-        std::cout << std::endl;
-
+        // renderer.renderFloor();
+        renderer.renderSimulation(simulation, _);
+        GLenum err;
+        while ((err = glGetError()) != GL_NO_ERROR) {
+            std::cerr << std::endl << "[Error] OpenGL error: " << err << std::endl;
+        }
+    }
+    std::cout << std::endl;
+    if (config["render"]["enable_gl"].as<bool>()) {
         generateVideo(config["video"], figuresPath);
-
+    }
+    if (config["blender"]["enabled"].as<bool>()) {
+        std::cout << "[Blender] Rendering video ... " << std::endl;
+        std::string command = "blender --background --python src/render.py";
+        system(command.c_str());
+        generateVideo(config["video"], renderPath, "rendered.avi");
     }
 
     return 0;

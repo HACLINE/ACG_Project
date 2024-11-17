@@ -6,13 +6,27 @@
 #include <GLUT/glut.h>
 #endif
 
-#include <utils.h>
-#include <marching_cube.h>
+#include "utils.h"
+#include "marching_cube.h"
 
-Renderer::Renderer(YAML::Node config) : config_(config) {
-    if (!config["thread"].as<bool>()) {
-        initializeOpenGL(config); 
+#ifndef STB_IMAGE_WRITE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#endif
+#include "stb_image_write.h"
+
+void saveFrame(const std::string& filename, int width, int height) {
+    std::vector<unsigned char> buffer(width * height * 3);
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer.data());
+    stbi_flip_vertically_on_write(1);
+    stbi_write_png(filename.c_str(), width, height, 3, buffer.data(), width * 3);
+}
+
+Renderer::Renderer(YAML::Node config, std::string figurePath) : config_(config), figuresPath_(figurePath) {
+    enable_gl_ = config["enable_gl"].as<bool>();
+    if (enable_gl_) {
+        initializeOpenGL(config);
     } 
+    initializeReconstruction(config);
 }
 
 void Renderer::initializeOpenGL(YAML::Node config) {
@@ -62,6 +76,36 @@ void Renderer::initializeOpenGL(YAML::Node config) {
     glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
 }
 
+void Renderer::initializeReconstruction(YAML::Node config) {
+    reconstruction_args_ = "-q ";
+    reconstruction_args_ += "-r=" + config["reconstruction"]["radius"].as<std::string>() + " ";
+    reconstruction_args_ += "-l=" + config["reconstruction"]["laplacian"].as<std::string>() + " ";
+    reconstruction_args_ += "-c=" + config["reconstruction"]["curvature"].as<std::string>() + " ";
+    reconstruction_args_ += "-t=" + config["reconstruction"]["surfacetension"].as<std::string>() + " ";
+    if (config["reconstruction"]["subdomain-grid"].as<bool>()) {
+        reconstruction_args_ += "--subdomain-grid=on ";
+    } else {
+        reconstruction_args_ += "--subdomain-grid=off ";
+    }
+    if (config["reconstruction"]["mesh-cleanup"].as<bool>()) {
+        reconstruction_args_ += "--mesh-cleanup=on ";
+    } else {
+        reconstruction_args_ += "--mesh-cleanup=off ";
+    }
+    if (config["reconstruction"]["mesh-smoothing-weights"].as<bool>()) {
+        reconstruction_args_ += "--mesh-smoothing-weights=on ";
+    } else {
+        reconstruction_args_ += "--mesh-smoothing-weights=off ";
+    }
+    reconstruction_args_ += "--mesh-smoothing-iters=" + config["reconstruction"]["mesh-smoothing-iters"].as<std::string>() + " ";
+    if (config["reconstruction"]["normals"].as<bool>()) {
+        reconstruction_args_ += "--normals=on ";
+    } else {
+        reconstruction_args_ += "--normals=off ";
+    }
+    reconstruction_args_ += "--normals-smoothing-iters=" + config["reconstruction"]["normals-smoothing-iters"].as<std::string>() + " ";
+}
+
 void Renderer::renderMesh(const Mesh& mesh, glm::vec3 color = glm::vec3(0.0f, 0.8f, 0.2f)) {
     glBegin(GL_TRIANGLES);
     for (const auto& face : mesh.faces) {
@@ -98,10 +142,6 @@ void Renderer::renderFloor() {
     // glVertex3f( 100.0f, -10.0f,  100.0f);
     // glVertex3f(-100.0f, -10.0f,  100.0f);
     // glEnd();
-}
-
-void Renderer::swapBuffers() {
-    glutSwapBuffers();
 }
 
 void Renderer::renderRigidbody(Rigidbody* rigidbody) {
@@ -151,13 +191,13 @@ void Renderer::renderFluid(Fluid* fluid, int method = SPLASH_SURF) {
 
         renderMesh(mesh);
     } else if (method == SPLASH_SURF) {
-        saveParticlesToPLY(particles, "particles.ply");
+        saveParticlesToPLY(particles, "./.cache/tmp/particles.ply");
 
-        std::string command = "splashsurf reconstruct particles.ply -o mesh.obj -q -r=0.03 -l=2.0 -c=0.5 -t=0.6 --subdomain-grid=on --mesh-cleanup=on --mesh-smoothing-weights=on --mesh-smoothing-iters=25 --normals=on --normals-smoothing-iters=10";
+        std::string command = "splashsurf reconstruct ./.cache/tmp/particles.ply -o ./.cache/tmp/mesh.obj " + reconstruction_args_;
 
         system(command.c_str());
 
-        Mesh mesh = loadMeshFromOBJ("mesh.obj");
+        Mesh mesh = loadMeshFromOBJ("./.cache/tmp/mesh.obj");
 
         renderMesh(mesh);
     }
@@ -184,9 +224,9 @@ void Renderer::renderSphere(Sphere* sphere) {
     glPopMatrix();
 }
 
-void Renderer::renderSimulation(const Simulation& simulation) {
-    YAML::Node blender = simulation.getBlenderConfig();
-    if (blender["enabled"].as<bool>() == false) {
+void Renderer::renderSimulation(const Simulation& simulation, int frame) {
+    if (enable_gl_) {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         for (int i = 0; i < simulation.getNumRigidbodies(); i++) {
             renderRigidbody(simulation.getRigidbody(i));
         }
@@ -201,33 +241,38 @@ void Renderer::renderSimulation(const Simulation& simulation) {
         }
         for (int i = 0; i < simulation.getNumSpheres(); i++) {
             renderSphere(simulation.getSphere(i));
-        }
+        }    
+        
+        std::string file_name = figuresPath_ + "/frame_" + intToString(frame, 6) + ".png";
+        saveFrame(file_name, config_["windowsize"][0].as<int>(), config_["windowsize"][1].as<int>());
+
+        glutSwapBuffers();
     }
-    else {
-        if (simulation.getNumRigidbodies() == 0 && simulation.getNumFluids() == 1 && simulation.getNumCloths() == 1) {
-            const auto& fluid_particles = simulation.getFluid(0)->getParticles();
-            saveParticlesToPLY(fluid_particles, "particles.ply");
+    std::string subdir = "./.cache/frame_" + intToString(frame, 6);
+    std::string command = "mkdir " + subdir + " && mkdir " + subdir + "/rigid_bodies && mkdir " + subdir + "/fluids && mkdir " + subdir + "/cloths";
+    system(command.c_str());
 
-            std::string command = "splashsurf reconstruct particles.ply -o fluid_mesh.obj -q -r=0.03 -l=2.0 -c=0.5 -t=0.6 --subdomain-grid=on --mesh-cleanup=on --mesh-smoothing-weights=on --mesh-smoothing-iters=25 --normals=on --normals-smoothing-iters=10";
-
-            system(command.c_str());
-
-            Mesh cloth_mesh = simulation.getCloth(0)->getMesh();
-            saveMeshToOBJ(cloth_mesh, "cloth_mesh.obj");
-
-            command = "blender --python src/render.py";
-
-            system(command.c_str());
-        }
-        else {
-            std::cerr << "[Render ERROR] Blender rendering does not support the following settings: " << std::endl;
-            std::cerr << "Rigidbodies: " << simulation.getNumRigidbodies() << std::endl;
-            std::cerr << "Fluids: " << simulation.getNumFluids() << std::endl;
-            std::cerr << "Cloths: " << simulation.getNumCloths() << std::endl;
-            std::cerr << "Stopping simulation." << std::endl;
-            exit(1);
-        }
+    for (int i = 0; i < simulation.getNumRigidbodies(); i++) {
+        saveMeshToOBJ(simulation.getRigidbody(i)->getCurrentMesh(), subdir + "/rigid_bodies/" + intToString(i, 2) + ".obj");
     }
+
+    for (int i = 0; i < simulation.getNumFluids(); i++) {
+        saveParticlesToPLY(simulation.getFluid(i)->getParticles(), subdir + "/fluids/" + intToString(i, 2) + ".ply");
+        command = "splashsurf reconstruct " + subdir + "/fluids/" + intToString(i, 2) + ".ply -o " + subdir + "/fluids/" + intToString(i, 2) + ".obj " + reconstruction_args_ + "&& rm " + subdir + "/fluids/" + intToString(i, 2) + ".ply";
+        system(command.c_str());
+    }
+
+    for (int i = 0; i < simulation.getNumCloths(); i++) {
+        saveMeshToOBJ(simulation.getCloth(i)->getMesh(), subdir + "/cloths/" + intToString(i, 2) + ".obj");
+    }
+
+
+    // std::cerr << "[Render ERROR] Blender rendering does not support the following settings: " << std::endl;
+    // std::cerr << "Rigidbodies: " << simulation.getNumRigidbodies() << std::endl;
+    // std::cerr << "Fluids: " << simulation.getNumFluids() << std::endl;
+    // std::cerr << "Cloths: " << simulation.getNumCloths() << std::endl;
+    // std::cerr << "Stopping simulation." << std::endl;
+    // exit(1);
 }
 
 void Renderer::renderObject(const RenderObject& object) {

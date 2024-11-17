@@ -3,6 +3,7 @@ name: test
 base: basic_config.yaml
 
 render:
+  enable_gl: true
   title: WoBingWang
   clearcolor: [1.0, 1.0, 1.0, 1.0]
   camera:
@@ -104,4 +105,7 @@ simulation:
   resolution: [30, 30, 30]
 
 cuda:
+  enabled: true
+
+blender:
   enabled: true

@@ -15,8 +15,9 @@
 // Renderer class
 class Renderer {
 public:
-    Renderer(YAML::Node config);
+    Renderer(YAML::Node config, std::string figuresPath);
     void initializeOpenGL(YAML::Node config);
+    void initializeReconstruction(YAML::Node config);
 
     void renderMesh(const Mesh&, glm::vec3);
     void renderParticles(const std::vector<Particle>&);
@@ -27,17 +28,17 @@ public:
     void renderTriangle(Triangle*);
     void renderSphere(Sphere*);
 
-    void renderSimulation(const Simulation&);
+    void renderSimulation(const Simulation&, int);
     void renderObject(const RenderObject&);
 
     void renderFloor();
 
     std::vector<float> particlesToDensityField(const std::vector<Particle>& particles, const glm::ivec3& gridResolution, float gridSpacing);
 
-    void swapBuffers(); // Swap front and back buffers
-
 private:
     YAML::Node config_;
+    std::string reconstruction_args_, figuresPath_;
+    bool enable_gl_;
 };
 
 #endif

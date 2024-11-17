@@ -1,3 +1,13 @@
+### 2024.11.17 18:00
+by xqc
+Done:
+- Store data and render later with blender. 
+- Allow disable GL rendering during simulation. (May be useful for speedup)
+  
+TODO:
+- CUDA
+- Parameter tuning
+
 ### 2024.11.16 13:30
 by wxb
 Done:

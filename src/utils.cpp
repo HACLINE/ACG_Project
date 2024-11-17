@@ -103,3 +103,11 @@ void saveMeshToOBJ(const Mesh& mesh, const std::string& filename) {
 
     ofs.close();
 }
+
+std::string intToString(int x, int len) {
+    std::string s = std::to_string(x);
+    while (s.size() < len) {
+        s = "0" + s;
+    }
+    return s;
+}

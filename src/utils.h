@@ -19,5 +19,6 @@ Mesh loadMeshFromOBJ(const std::string& filename);
 
 void saveMeshToOBJ(const Mesh& mesh, const std::string& filename);
 
+std::string intToString(int x, int len);
 
 #endif

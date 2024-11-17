@@ -11,5 +11,7 @@ make -j
 mkdir config
 mkdir assets
 mkdir figures
+mkdir render
+mkdir .cache
 cp -r ../config/* config/
 cp -r ../assets/* assets/

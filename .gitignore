@@ -9,3 +9,5 @@ config/_*.yaml
 video.avi
 particles.ply
 mesh.obj
+.cache
+rendered.avi
