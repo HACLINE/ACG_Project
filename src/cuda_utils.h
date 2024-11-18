@@ -13,7 +13,9 @@
         } \
     } while (0)
 
-__global__ void setNullptrKernel(int** ptr_array, int index);
-#endif
+#define CUDA_SYNC() \
+    CUDA_CHECK_ERROR(cudaDeviceSynchronize());\
+    CUDA_CHECK_ERROR(cudaGetLastError());
 
+#endif
 #endif // CUDA_UTILS_H

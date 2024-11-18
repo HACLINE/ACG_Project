@@ -76,10 +76,13 @@ simulation:
   friction: 0.5
   resolution: [40, 40, 40]
   wall_thickness: 0.005
+  coupling:
+    neighborhood_size: 30
+    hash_table_size: 200
 
 cuda:
   enabled: false
-  block_size: 512
+  block_size: 784
 
 blender:
   enabled: false

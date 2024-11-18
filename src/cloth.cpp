@@ -3,9 +3,21 @@
 #include <iostream>
 #include <chrono>
 
-Cloth::~Cloth() {}
+#include "utils.h"
 
-Cloth::Cloth(const std::string& path, const YAML::Node& config, float kernel_radius, int hash_table_size): particles_(), hash_table_(kernel_radius, hash_table_size, particles_) {
+Cloth::~Cloth() {
+#ifdef HAS_CUDA
+    if (cuda_enabled_) {
+        cudaFree(cuda_particles_);
+        cudaFree(cuda_face_norms_);
+        cudaFree(cuda_vertex_norms_);
+        cudaFree(cuda_faces_);
+        cudaFree(cuda_fixed_);
+    }
+#endif
+}
+
+Cloth::Cloth(const std::string& path, const YAML::Node& config, const YAML::Node& cuda, float kernel_radius, int hash_table_size): particles_(), hash_table_(kernel_radius, hash_table_size, particles_), cuda_enabled_(cuda["enabled"].as<bool>()), cuda_block_size_(cuda["block_size"].as<int>()) {
     if (config["init"].as<std::string>() == "fromfile") {
         std::ifstream fin;
         std::string filename = path + config["name"].as<std::string>();
@@ -111,6 +123,30 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, float kernel_rad
     num_faces_ = faces_.size();
     damping_ = config["damping"].as<float>();
     // std::cout << "KR: "<<kernel_radius<<", HTS: "<<hash_table_size<<", NP: "<<num_particles_<<std::endl;
+#ifdef HAS_CUDA
+    if (cuda_enabled_) {
+        cudaMalloc(&cuda_particles_, num_particles_ * sizeof(Particle));
+        cudaMalloc(&cuda_face_norms_, num_faces_ * sizeof(glm::vec3));
+        cudaMalloc(&cuda_vertex_norms_, num_particles_ * sizeof(glm::vec3));
+        cudaMalloc(&cuda_faces_, num_faces_ * sizeof(Face));
+        cudaMalloc(&cuda_fixed_, num_particles_ * sizeof(bool));
+
+        cudaMemcpy(cuda_particles_, particles_.data(), num_particles_ * sizeof(Particle), cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_face_norms_, face_norms_.data(), num_faces_ * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_vertex_norms_, vertex_norms_.data(), num_particles_ * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_faces_, faces_.data(), num_faces_ * sizeof(Face), cudaMemcpyHostToDevice);
+
+        face_norms_ = std::vector<glm::vec3>();
+        vertex_norms_ = std::vector<glm::vec3>();
+        
+        bool *tmp = new bool[num_particles_];
+        for (int i = 0; i < num_particles_; ++i) {
+            tmp[i] = fixed_[i];
+        }
+        cudaMemcpy(cuda_fixed_, tmp, num_particles_ * sizeof(bool), cudaMemcpyHostToDevice);
+        delete[] tmp;
+    }
+#endif
 }
 
 void Cloth::addVertex(const glm::vec3& pos, float r, float m) {
@@ -303,7 +339,7 @@ Mesh Cloth::getMesh() {
     return mesh;
 }
 
-XPBDCloth::XPBDCloth(const std::string& path, const YAML::Node& config, float kernel_radius, int hash_table_size): Cloth(path, config, kernel_radius, hash_table_size) {
+XPBDCloth::XPBDCloth(const std::string& path, const YAML::Node& config, const YAML::Node& cuda, float kernel_radius, int hash_table_size): Cloth(path, config, cuda, kernel_radius, hash_table_size) {
     num_distance_constraints_ = num_bending_constraints_ = 0;
     for (int i = 0; i < num_x_; ++i) {
         for (int j = 0; j < num_z_; ++j) {
@@ -330,9 +366,35 @@ XPBDCloth::XPBDCloth(const std::string& path, const YAML::Node& config, float ke
     }
     iters_ = config["iters"].as<int>();
     p_ = delta_p_ = std::vector<glm::vec3>(num_particles_, glm::vec3(0.0f));
+
+#ifdef HAS_CUDA
+    if (cuda_enabled_) {
+        cudaMalloc(&cuda_distance_constraints_, num_distance_constraints_ * sizeof(XPBD_DistanceConstraint));
+        cudaMalloc(&cuda_bending_constraints_, num_bending_constraints_ * sizeof(XPBD_BendingConstraint));
+        cudaMalloc(&cuda_p_, num_particles_ * sizeof(glm::vec3));
+        cudaMalloc(&cuda_delta_p_, num_particles_ * sizeof(glm::vec3));
+        cudaMalloc(&cuda_w_, num_particles_ * sizeof(float));
+
+        cudaMemcpy(cuda_distance_constraints_, distance_constraints_.data(), num_distance_constraints_ * sizeof(XPBD_DistanceConstraint), cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_bending_constraints_, bending_constraints_.data(), num_bending_constraints_ * sizeof(XPBD_BendingConstraint), cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_p_, p_.data(), num_particles_ * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_delta_p_, delta_p_.data(), num_particles_ * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_w_, w_.data(), num_particles_ * sizeof(float), cudaMemcpyHostToDevice);
+
+        p_ = delta_p_ = std::vector<glm::vec3>();
+        w_ = std::vector<float>();
+    }
+#endif
 }
 
-XPBDCloth::~XPBDCloth() {}
+XPBDCloth::~XPBDCloth() {
+#ifdef HAS_CUDA
+    if (cuda_enabled_) {
+        cudaFree(cuda_distance_constraints_);
+        cudaFree(cuda_bending_constraints_);
+    }
+#endif
+}
 
 void XPBDCloth::addDistanceConstraint(int p1, int p2, float stiffness) {
     distance_constraints_.push_back(XPBD_DistanceConstraint{p1, p2, glm::length(particles_[p1].position - particles_[p2].position), stiffness});
@@ -361,13 +423,20 @@ void XPBDCloth::solveDistanceConstraint(float dt) {
         delta_p_[p2] -= delta_lambda * w_[p2] * n;
     }
 }
+
 void XPBDCloth::solveBendingConstraint(float dt) {
     ;
 }
 
 void XPBDCloth::update(float dt) {
     // add external forces
-
+#ifdef HAS_CUDA
+    if (cuda_enabled_) {
+        updateCUDA(dt);
+        cudaMemcpy(particles_.data(), cuda_particles_, num_particles_ * sizeof(Particle), cudaMemcpyDeviceToHost);
+        return;
+    }
+#endif
     for (int i = 0; i < num_particles_; ++i) {
         particles_[i].acceleration += force_buffer_[i] * w_[i];
     }

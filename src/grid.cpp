@@ -5,6 +5,7 @@ Grid::Grid(const YAML::Node& config) {
     config_.max = glm::vec3(config["box"]["max"][0].as<float>(), config["box"]["max"][1].as<float>(), config["box"]["max"][2].as<float>());
     config_.resolution = glm::ivec3(config["resolution"][0].as<int>(), config["resolution"][1].as<int>(), config["resolution"][2].as<int>());
     config_.wall_thickness = config["wall_thickness"].as<float>();
+    config_.num = config_.resolution.x * config_.resolution.y * config_.resolution.z;
 
     config_.offset = config_.min;
     config_.scale = (config_.max - config_.min) / glm::vec3(config_.resolution);
@@ -32,17 +33,4 @@ glm::ivec3 Grid::worldToGridInt(const glm::vec3& p) {
 
 glm::vec3 Grid::gridToWorld(const glm::vec3& p) {
     return p * config_.scale + config_.offset;
-}
-
-PICFLIPGrid::PICFLIPGrid(const YAML::Node& config): Grid(config) {
-    cells_ = new Cell[config_.resolution.x * config_.resolution.y * config_.resolution.z];
-}
-
-PICFLIPGrid::~PICFLIPGrid() {
-    delete[] cells_;
-}
-
-Cell PICFLIPGrid::ccell(const glm::ivec3& p) const {
-    if (p.x < 0 || p.x >= config_.resolution.x || p.y < 0 || p.y >= config_.resolution.y || p.z < 0 || p.z >= config_.resolution.z) return Cell();
-    return cells_[p.x + p.y * config_.resolution.x + p.z * config_.resolution.x * config_.resolution.y];
 }

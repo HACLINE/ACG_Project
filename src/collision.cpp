@@ -3,6 +3,13 @@
 #include <iostream>
 #include "spatial_hash.h"
 
+namespace collision {
+    Neighbourhood* fluid_cloth_neighbourhood = nullptr;
+#ifdef HAS_CUDA
+    VecWithInt *delta_cloth_positions = nullptr, *delta_old_cloth_positions = nullptr, *delta_fluid_positions = nullptr, *delta_fluid_velocities = nullptr;
+#endif
+}
+
 //Impulse-based collision response
 void collision::rigidbody_box_collision(Rigidbody* rigidbody, const glm::vec3& box_min, const glm::vec3& box_max, float restitution, float friction, const YAML::Node& cuda) {
     if (rigidbody->getType() == "impulse") {
@@ -110,11 +117,17 @@ void collision::fluid_box_collision(Fluid* fluid, const glm::vec3& box_min, cons
     }
 }
 
-void collision::fluid_cloth_collision(Fluid* fluid, Cloth* cloth, float dt) {
+void collision::fluid_cloth_collision(Fluid* fluid, Cloth* cloth, float dt, YAML::Node& cuda, YAML::Node& coupling) {
     std::string fluid_type = fluid->getType();
     std::string cloth_type = cloth->getType();
 
 if (fluid_type == "PICFLIP" && cloth_type == "XPBD") {
+#ifdef HAS_CUDA
+    if (cuda["enabled"].as<bool>()) {
+        PICFLIP_XPBD_collision_CUDA(static_cast<PICFLIPFluid*>(fluid), static_cast<XPBDCloth*>(cloth), dt, cuda, coupling);
+        return;
+    }
+#endif
     cloth->computeNormals();
     std::vector<Particle>& particles = fluid->getParticles();
     std::vector<Particle>& cloth_particles = cloth->getParticles();
@@ -123,7 +136,7 @@ if (fluid_type == "PICFLIP" && cloth_type == "XPBD") {
     assert(cloth_old_positions.size() == cloth_particles.size() && particles.size() > 0 && cloth_particles.size() > 0);
     float r_c = cloth_particles[0].radius;
     float r_p = particles[0].radius;
-    float r = r_c + r_c;
+    float r = r_c + r_p;
 
     // std::cout << "r " << r << std::endl;
 
@@ -158,7 +171,7 @@ if (fluid_type == "PICFLIP" && cloth_type == "XPBD") {
         }
     };
 
-    SpatialHash hash_table(r, 300, cloth_particles);
+    SpatialHash hash_table(r, coupling["neighborhood_size"].as<int>(), cloth_particles);
     hash_table.update();
     for (int i = 0; i < particles.size(); ++i) {
         std::vector<int> neighbors;
@@ -173,84 +186,3 @@ if (fluid_type == "PICFLIP" && cloth_type == "XPBD") {
     exit(1);
 }
 }
-
-/*
-void CollideParticles(
-	uint fluid_idx, float3* fluid_positions, float3* fluid_velocities,
-	uint cloth_idx, float4* cloth_positions, float4* cloth_positions_old, float4* cloth_normals)
-{
-	
-	float4 cp = cloth_positions[cloth_idx];
-	float3 fp = fluid_positions[fluid_idx];
-
-	float3 dir = make_float3(cp.x - fp.x, cp.y - fp.y, cp.z - fp.z);
-	//float3 dir = make_float3(fp.x - cp.x, fp.y - cp.y, fp.z - cp.z);
-	float dist = dir.x * dir.x + dir.y * dir.y + dir.z * dir.z;
-
-	const float rsq = pfParams.particle_size * pfParams.particle_size * 4.0f;
-
-	if (dist < rsq)
-	{
-		//DO COLLISION RESPONSE
-		//dist = sqrtf(dist);
-		//dir = dir / dist;
-
-
-		float3 normal = tof3(cloth_normals[cloth_idx]);
-		if (float3_dot(dir, normal) < 0.0f)
-			normal *= -1.0f;
-
-
-		/////////
-        float3 dv = 
-
-		dist -= pfParams.particle_size;
-
-		float w = cp.w + cp.w;// pfParams.particle_iweight;
-		dir *= (dist / w);
-
-		cp.x += dir.x * cp.w;
-		cp.y += dir.y * cp.w;
-		cp.z += dir.z * cp.w;
-
-		fp -= dir * cp.w;// pfParams.particle_iweight;
-        ///////////////////
-
-		float4 cpo = cloth_positions_old[cloth_idx];
-		float3 v0 = (tof3(cp) - tof3(cpo)) * pfParams.idt;
-		float3 v1 = fluid_velocities[fluid_idx];
-
-		float w0 = cp.w;
-		float w1 = pfParams.particle_iweight;
-		float iconstraintMass = 1.0f / (w0 + w1);
-
-		float3 dv = v0 - v1;
-		if (float3_dot(dv, normal) < 0.0f)
-		{
-			//Collision Resolution
-			float jn = -(1.0f * float3_dot(dv, normal)) * iconstraintMass;
-
-			v0 += normal * (jn * w0);
-			v1 -= normal * (jn * w1);
-						
-			fluid_velocities[fluid_idx] = v1;
-			cloth_positions_old[cloth_idx] = cpo;
-		}
-
-		float pen = pfParams.particle_size * 2.0f - (float3_dot(make_float3(cp.x, cp.y, cp.z), normal) - float3_dot(fp, normal));
-		pen *= iconstraintMass;
-
-		cp.x += normal.x * pen * w0;
-		cp.y += normal.y * pen * w0;
-		cp.z += normal.z * pen * w0;
-
-        cpo.x = cp.x - v0.x * pfParams.dt;
-		cpo.y = cp.y - v0.y * pfParams.dt;
-		cpo.z = cp.z - v0.z * pfParams.dt;
-
-		fluid_positions[fluid_idx] = fp - normal * (pen * w1);
-		cloth_positions[cloth_idx] = cp;
-		cloth_positions_old[cloth_idx] = cpo;
-	}
-}
-*/

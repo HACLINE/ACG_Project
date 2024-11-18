@@ -11,6 +11,7 @@ struct GridConfig {
     glm::vec3 min, max;
     glm::vec3 offset, scale;
     glm::ivec3 resolution;
+    int num;
     float wall_thickness;
 };
 
@@ -26,18 +27,8 @@ public:
     GridConfig config_;
 };
 
-class PICFLIPGrid : public Grid {
-public:
-    PICFLIPGrid(const YAML::Node&);
-    ~PICFLIPGrid();
-    Cell& cell(const glm::ivec3& p) {return cells_[p.x + p.y * config_.resolution.x + p.z * config_.resolution.x * config_.resolution.y];}
-    Cell ccell(const glm::ivec3&) const;
-
-public:
-    Cell* cells_;
-};
-
-template <class T> class VecGrid : public Grid {
+template <class T> 
+class VecGrid : public Grid {
 public:
     VecGrid(const YAML::Node&);
     ~VecGrid();
@@ -47,15 +38,18 @@ public:
     T* vecs_;
 };
 
-template <class T> VecGrid<T>::VecGrid(const YAML::Node& config): Grid(config) {
-    vecs_ = new T[config_.resolution.x * config_.resolution.y * config_.resolution.z];
+template <class T> 
+VecGrid<T>::VecGrid(const YAML::Node& config): Grid(config) {
+    vecs_ = new T[config_.num];
 }
 
-template <class T> VecGrid<T>::~VecGrid() {
+template <class T> 
+VecGrid<T>::~VecGrid() {
     delete[] vecs_;
 }
 
-template <class T> T VecGrid<T>::cvec(const glm::ivec3& p) const {
+template <class T> 
+T VecGrid<T>::cvec(const glm::ivec3& p) const {
     // if (p.x < 0 || p.x >= config_.resolution.x || p.y < 0 || p.y >= config_.resolution.y || p.z < 0 || p.z >= config_.resolution.z) return T();
     // return vecs_[p.x + p.y * config_.resolution.x + p.z * config_.resolution.x * config_.resolution.y];
     glm::ivec3 q = p;

@@ -1,3 +1,11 @@
+### 2024.11.19 2:00
+by xqc
+Done:
+- Finish CUDA on `PICFLIPFluid`, `XPBDCloth` and coupling of both. Really annoying but finally done.
+
+TODO:
+- Maybe the file storage is the bottleneck. Change to subprocessing? Plus, consider reconstruct surface after simulation. It takes space and time to reconstruct and store the surface.
+
 ### 2024.11.17 18:00
 by xqc
 Done:

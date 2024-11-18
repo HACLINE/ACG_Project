@@ -54,7 +54,7 @@ class Simulation {
 
         float restitution_, friction_;
 
-        YAML::Node cuda_;
+        YAML::Node cuda_, coupling_;
 
         YAML::Node blender_;
 };

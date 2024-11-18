@@ -5,7 +5,7 @@
 
 Simulation::Simulation() {}
 
-Simulation::Simulation(YAML::Node load, YAML::Node physics, YAML::Node cuda, YAML::Node blender): cuda_(cuda), blender_(blender) {
+Simulation::Simulation(YAML::Node load, YAML::Node physics, YAML::Node cuda, YAML::Node blender): cuda_(cuda), blender_(blender), coupling_(physics["coupling"]) {
     std::string rigidbody_path = load["cwd"].as<std::string>() + load["rigidbody"]["path"].as<std::string>() + "/";
     std::string fluid_path = load["cwd"].as<std::string>() + load["fluid"]["path"].as<std::string>() + "/";
     std::string cloth_path = load["cwd"].as<std::string>() + load["cloth"]["path"].as<std::string>() + "/";
@@ -34,9 +34,9 @@ Simulation::Simulation(YAML::Node load, YAML::Node physics, YAML::Node cuda, YAM
     for (int i = 0; i < load["cloth"]["cfg"].size(); ++i) {
         Cloth* cloth;
         if (load["cloth"]["type"].as<std::string>() == "mass_spring") {
-            cloth = new Cloth(cloth_path, load["cloth"]["cfg"][i], load["cloth"]["kernel_radius"].as<float>(), load["cloth"]["hash_table_size"].as<int>());
+            cloth = new Cloth(cloth_path, load["cloth"]["cfg"][i], cuda, load["cloth"]["kernel_radius"].as<float>(), load["cloth"]["hash_table_size"].as<int>());
         } else if (load["cloth"]["type"].as<std::string>() == "XPBD") {
-            cloth = new XPBDCloth(cloth_path, load["cloth"]["cfg"][i], load["cloth"]["kernel_radius"].as<float>(), load["cloth"]["hash_table_size"].as<int>());
+            cloth = new XPBDCloth(cloth_path, load["cloth"]["cfg"][i], cuda, load["cloth"]["kernel_radius"].as<float>(), load["cloth"]["hash_table_size"].as<int>());
         } else {
             std::cerr << "[Error] Invalid clothtype" << std::endl;
             exit(1);
@@ -71,6 +71,19 @@ Simulation::Simulation(YAML::Node load, YAML::Node physics, YAML::Node cuda, YAM
     box_max_ = glm::vec3(physics["box"]["max"][0].as<float>(), physics["box"]["max"][1].as<float>(), physics["box"]["max"][2].as<float>());
     restitution_ = physics["restitution"].as<float>();
     friction_ = physics["friction"].as<float>();
+
+#ifdef HAS_CUDA
+    if (cuda["enabled"].as<bool>()) {
+        int max_fluid = 0, max_cloth = 0;
+        for (int i = 0; i < fluids_.size(); ++i) {
+            max_fluid = max_fluid > fluids_[i]->getNumParticles() ? max_fluid : fluids_[i]->getNumParticles();
+        }
+        for (int i = 0; i < cloths_.size(); ++i) {
+            max_cloth = max_cloth > cloths_[i]->getNumParticles() ? max_cloth : cloths_[i]->getNumParticles();
+        }
+        collision::coupling_init_CUDA(max_fluid, max_cloth, coupling_["neighborhood_size"].as<int>());
+    }
+#endif
 }
 
 Simulation::~Simulation() {
@@ -131,7 +144,7 @@ void Simulation::update(float dt) {
 
     for (int i = 0; i < fluids_.size(); ++i) {
         for (int j = 0; j < cloths_.size(); ++j) {
-            collision::fluid_cloth_collision(fluids_[i], cloths_[j], dt);
+            collision::fluid_cloth_collision(fluids_[i], cloths_[j], dt, cuda_, coupling_);
         }
     }
 
@@ -146,18 +159,6 @@ void Simulation::update(float dt) {
     for (int i = 0; i < fluids_.size(); ++i) {
         collision::fluid_box_collision(fluids_[i], box_min_, box_max_, restitution_, friction_, cuda_);
     }
-    // for (int i = 0; i < cloths_.size(); ++i) { // Cloth-Wall collision
-    //     cloths_[i]->selfCollision();
-    //     for (int j = 0; j < walls_.size(); ++j) {
-    //         cloths_[i]->collisionWithTriangle(walls_[j], dt);
-    //     }
-    //     for (int j = 0; j < spheres_.size(); ++j) {
-    //         cloths_[i]->collisionWithSphere(spheres_[j], dt);
-    //     }
-    // }
-    // for (int i = 0; i < cloths_.size(); ++i) {
-    //     cloths_[i]->selfCorrectSpring();
-    // }
 }
 
 Rigidbody* Simulation::getRigidbody(int i) const {

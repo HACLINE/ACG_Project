@@ -218,6 +218,38 @@ class Render:
         # container_mesh = trimesh.load(container_mesh_path)
         # container_mesh = self.add_container(container_mesh)
         self.render_mesh([fluid_mesh, rigid_mesh], output_path)
+
+    def render_all(self, data_path, container_mesh_path, output_path):
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in bpy.data.objects:
+            if obj.type == 'MESH':
+                obj.select_set(True)
+        bpy.ops.object.delete()
+
+        all_mesh = []
+
+        fluid_material = self.get_material("Water", "assets/water.blend")
+        if self.config["load"]["fluid"]["cfg"] is not None:
+            for i in range(len(self.config["load"]["fluid"]["cfg"])):
+                all_mesh.append(trimesh.load(data_path + "/fluids/" + int_to_string(i, 2) + ".obj"))
+                all_mesh[-1] = trimesh_to_blender_object(all_mesh[-1], object_name="Fluid" + int_to_string(i, 2))
+                if all_mesh[-1].data.materials:
+                    all_mesh[-1].data.materials[0] = fluid_material
+                else:
+                    all_mesh[-1].data.materials.append(fluid_material)
+        
+        cloth_material = self.get_material('Realistic procedural gold', 'assets/rigid.blend')
+        if self.config["load"]["cloth"]["cfg"] is not None:
+            for i in range(len(self.config["load"]["cloth"]["cfg"])):
+                all_mesh.append(trimesh.load(data_path + "/cloths/" + int_to_string(i, 2) + ".obj"))
+                all_mesh[-1] = trimesh_to_blender_object(all_mesh[-1], object_name="Cloth" + int_to_string(i, 2))
+                if all_mesh[-1].data.materials:
+                    all_mesh[-1].data.materials[0] = cloth_material
+                else:
+                    all_mesh[-1].data.materials.append(cloth_material)
+        
+        self.render_mesh(all_mesh, output_path)
+            
         
     def add_container(self, container_mesh):
         glass_material = self.get_material("Scratched Glass (Procedural)", "assets/glass.blend")
@@ -246,7 +278,7 @@ def main():
     renderer = Render(config)
 
     for i in range(0, config["video"]["sps"] * config["video"]["length"], config["video"]["sps"] // config["video"]["fps"]):
-        renderer.render_coupled_fluid_rigid("./.cache/frame_" + int_to_string(i, 6) + "/fluids/00.obj", "./.cache/frame_" + int_to_string(i, 6) + "/cloths/00.obj", None, os.environ['RENDER'] + "/frame_" + int_to_string(i, 6) + ".png")
+        renderer.render_all("./.cache/frame_" + int_to_string(i, 6), None, os.environ['RENDER'] + "/frame_" + int_to_string(i, 6) + ".png")
 
 if __name__ == "__main__":
     main()

@@ -154,15 +154,43 @@ private:
     void transferToParticles(float);
     void advect(float);
 
+#ifdef HAS_CUDA
+    void transferToGridCUDA(void);
+    void markerCUDA(void);
+    void addForceCUDA(const glm::vec3&, float);
+    void divergenceCUDA(void);
+    void jacobiCUDA(int);
+    void subtractVelCUDA(void);
+    void transferToParticlesCUDA(float);
+    void advectCUDA(float);
+#endif
 private:
 
-    PICFLIPGrid *grid_;
+    VecGrid<Cell> *grid_;
     VecGrid<glm::vec4> *orig_vel_grid_, *vel_grid_, *buffer_vel_grid_;
-    VecGrid<float> *divergence_grid_;
-    VecGrid<float> *pressure_grid_, *buffer_pressure_grid_;
+    VecGrid<float> *divergence_grid_, *pressure_grid_, *buffer_pressure_grid_;
+
+#ifdef HAS_CUDA
+    PICFLIPCell* cuda_grid_;
+    GridConfig* cuda_config_;
+#endif
 
     glm::vec3 accerleration_;
     float particles_per_cell_, flipness_, scheduler_temperature_, scheduler_scale_, vel_discount_, weight_inf_; 
     int jacobi_iters_;
+    GridConfig config_;
 };
+
+#ifdef HAS_CUDA
+__global__ void PICFLIPtransferToGridPTask(Particle* cuda_particles_, PICFLIPCell* cuda_grid_, float weight_inf_, int num_particles_, GridConfig* config_);
+__global__ void PICFLIPtransferToGridGTask(Particle* cuda_particles_, PICFLIPCell* cuda_grid_, float weight_inf_, int num_particles_, GridConfig* config_);
+__global__ void PICFLIPmarkerTask(PICFLIPCell* cuda_grid_, GridConfig* config_);
+__global__ void PICFLIPaddForceTask(PICFLIPCell* cuda_grid_, const glm::vec3 a, float dt, GridConfig* config_);
+__global__ void PICFLIPdivergenceTask(PICFLIPCell* cuda_grid_, int particles_per_cell_, float scheduler_temperature_, float scheduler_scale_,GridConfig* config_);
+__global__ void PICFLIPjacobiTask(PICFLIPCell* cuda_grid_, GridConfig* config_);
+__global__ void PICFLIPswapPressureBuffersTask(PICFLIPCell* cuda_grid_, GridConfig* config_);
+__global__ void PICFLIPsubtractVelTask(PICFLIPCell* cuda_grid_, GridConfig* config_);
+__global__ void PICFLIPtransferToParticlesTask(Particle* cuda_particles_, PICFLIPCell* cuda_grid_, int num_particles_, float dt, float flipness_, float vel_discount_, GridConfig* config_);
+__global__ void PICFLIPadvectTask(Particle* cuda_particles_, PICFLIPCell* cuda_grid_, int num_particles_, float dt, GridConfig* config_);
+#endif
 #endif

@@ -89,6 +89,23 @@ struct Cell {
     int start, end;
 };
 
+struct PICFLIPCell {
+    int num;
+    bool marker;
+    glm::vec4 orig_vel, vel, buffer_vel;
+    float divergence, pressure, buffer_pressure;
+};
+
+struct Neighbourhood {
+    int* cuda_neighbors = nullptr;
+    int num_neighbors = 0;
+};
+
+struct VecWithInt {
+    glm::vec3 vec;
+    int idx;
+};
+
 glm::mat3 cross_matrix(const glm::vec3&);
 glm::mat3 rotation_matrix(const glm::quat&);
 glm::vec3 transform(const glm::vec3&, const glm::vec3&, const glm::quat&);
