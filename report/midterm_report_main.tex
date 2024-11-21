@@ -1,0 +1,122 @@
+\section{TODO list: should be deleted before submission}
+
+\begin{itemize}
+\item Method - Rigid Body Simulation
+\item Method - Fluid Simulation
+\item Results
+\end{itemize}
+
+\section{Introduction}
+
+We have implemented a cloth-fluid coupling system using a combination of fluid and cloth simulation techniques. We also wrote rigid body simulation and its interaction with cloth. 
+
+We also provided an universal code structure, which is capable for adding more simulation modules. To do this, we seperated apart the simulation modules and the rendering modules, and support unlimited number of objects to be simulated.
+
+Furthermore, we implemented the GPU and multi-thread acceleration to speed up the simulation to real-time. The code is written by ourself, only using the API to get access to CUDA memory. Our main code is written in C++, only the final rendering part is written in Python using Blender API.
+
+Our final plan is to simulate cloth-fluid coupling together with container, and to provide a user-friendly interface for users to do real-time interaction. Moreover, we desire to provide a basic simulator structure to facilitate the development of more complex simulation systems.
+% Head 1
+\section{Methods}
+
+\subsection{Rigid Body Simulation}
+
+TODO.
+
+\subsection{Fluid Simulation}
+
+TODO.
+
+\subsection{Cloth Simulation}
+
+To simulate cloth, we have implemented two methods: mass-spring system and XPBD \cite{10.1145/2994258.2994272}. We use the latter method to do coupling because of its stability with varying time steps and hyperparameters.
+
+\subsubsection{Mass-spring}
+
+We model the cloth as a set of particles connected by springs. The force exerted on each particle is the sum of the forces exerted by the springs connected to it. We also give the particles a damping force to simulate air resistance. The formula of two forces are \eqref{eq-ms-1} and \eqref{eq-ms-2}, repectively.
+\begin{equation}
+  \label{eq-ms-1}
+\mathbf{F}_{\text{damping}}=-k_{\text{damping}}m\mathbf{v}.
+\end{equation}
+
+\begin{equation}
+  \label{eq-ms-2}
+\mathbf{F}_{\text{spring}}=k_{\text{spring}}(\|\mathbf{p}_1-\mathbf{p}_2\|-l_{\text{rest}})\frac{\mathbf{p}_1-\mathbf{p}_2}{\|\mathbf{p}_1-\mathbf{p}_2\|}.
+\end{equation}
+
+The cloth is equipped with three types of springs: structural (between adjacent particles), shear (between diagonal particles), and bending (between particles with distance 2). 
+
+Mass-spring system is unstable! To stablize the simulation, we compulsively reduce the length of springs that exceeds $\gamma=1.1$ times the rest length.
+
+\subsubsection{XPBD}
+
+The position-based dynamics is a method to simulate cloth by solving constraints. In each simulation loop, we update the positions of particles in $I=50$ iterations to satisfy the constraints. Let $\Delta t'=\Delta t/I$. In each $\Delta t'$ time, we first predict the position
+\begin{equation}
+  \label{eq-xpbd-1}
+\mathbf{p}_i^*=\mathbf{p}_i+\Delta t'\mathbf{v}_i+\frac{\Delta t'^2}{m}\mathbf{F}_{i,\text{ext}},
+\end{equation}
+Then we do modification $\mathbf{p}'\leftarrow\mathbf{p}^\star +\Delta \mathbf{p}$ for each constraint, where
+\begin{equation}
+  \label{eq-xpbd-2}
+\Delta \mathbf{p}=\mathbf{M}^{-1} \nabla C(\mathbf{p}^\star)\Delta \lambda,
+\end{equation}
+
+\begin{equation}
+  \label{eq-xpbd-3}
+\Delta \lambda = -\frac{C(\mathbf{p}^\star)}{\nabla C(\mathbf{p}^\star)\mathbf{M}^{-1}\nabla C(\mathbf{p}^\star)^T + \tilde \alpha}.
+\end{equation}
+Here, $C$ is a constraint function, $\mathbf{M}$ is the mass matrix (diagonal), and $\tilde \alpha=\alpha/\Delta t^2$ is a stabilization term. Note that, if $\alpha=0$, XPBD is equivalent to the classical PBD algorithm.
+
+We implemented the distance constraint
+\begin{equation}
+  \label{eq-xpbd-4}
+C_{\text{dist}}(\mathbf{p}_i,\mathbf{p}_j)=\|\mathbf{p}_i-\mathbf{p}_j\|-l_{\text{rest}},
+\end{equation}
+where $l_{\text{rest}}$ is the initial distance between particles.
+
+\subsubsection{Collisions} We implemented some collision checks with the ground and the sphere. We also wrote the self-collision check, which is done by checking the distance between each pair of particles and updating their speed in the normal direction.
+
+\subsection{Cloth-Fluid Coupling}
+
+To do coupling, we need to calculate the force exerted by the fluid on the cloth. We treat materials as particles. Suppose the particles of fluid and cloth are $r_f$ and $r_c$ respectively. First we calculate the vertex normals of cloth using face normals, $n_v=\text{normalize}(\sum_{\text{adjacent}} n_f)$. Then, we detect the collision by updating every pair of particles $(p_f,p_c)$ such that $||p_f-p_c||\le r_f+r_c$, and update their position and speed along the normal direction, such that the momentum is conserved.
+
+To avoid permeation, we should iteratively check collisions until no collision is detected. In practice, we only need to check $N$ rounds on each fluid particle. Moreover, to control the permeability, we can tune the hyperparameters $N,r_f,r_c$.
+
+To enable parallel computing, we detect all neighbors of each particle and update the position by averaging the forces exerted by the neighbors. Then, we can harness GPU to speed up this process into real-time. Although this acceleration method is not equivalent to the original method, it does not provide any additional artifacts, and is much faster.
+
+\subsection{Accelerations}
+
+\subsubsection{Spatial Hash} We implemented a spatial hash class, which is used during fluid simulation, cloth self-collision detection, and cloth-fluid coupling. One can directly use \textit{getneighbors(p)} to get all neighbors (with distance $\le $ threshold) of a point or a grid $p$.
+
+\subsubsection{GPU Acceleration} We implemented the GPU acceleration for fluid, cloth simulation and coupling process using CUDA. After GPU acceleration, the simulation speed improves by approximately $20$x, which can finally run in real-time.
+
+\subsubsection{Multi-thread Acceleration} We implemented the multi-thread acceleration for the rendering process. We use the \textit{std::thread} to render the simulation results in parallel, avoiding the rendering process to be the bottleneck of the simulation.
+
+\section{Results}
+
+TODO. Plan to have: fluid; cloth; cloth onto a sphere; fluid pour onto cloth (with different permeability)
+
+\section{External Tools}
+
+We only used the following external tools, and the only funtionality we used is listed below:
+
+\begin{itemize}
+\item \textbf{glm}: to handle matrix operations.
+\item \textbf{OpenGL}: to render the simulation results and provide GUI.
+\item \textbf{OpenCV}: to generate videos.
+\item \textbf{stb\_image\_write}: to save images.
+\item \textbf{splashsurf}: to smooth the fluid surface and finalize surface reconstruction.
+\item \textbf{Blender (Python)}: to do rendering.
+\end{itemize}
+
+\section{Future Plan}
+
+We decided to implement the following features in the future:
+
+\begin{itemize}
+\item A \textbf{control interface} to interpolate the simulation parameters and change the cloth's position in real-time.
+\item The \textbf{wetting effect} of the cloth.
+\item More \textbf{constraints} to simulate more complex cloth behaviors, such as collision with rigid bodies.
+\end{itemize}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{midterm_report_reference}
