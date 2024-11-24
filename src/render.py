@@ -129,7 +129,7 @@ class Render:
 
         bpy.ops.object.camera_add(location=camera_location, rotation=camera_rotation)
         camera = bpy.context.object
-        camera.data.lens = config["render"]["perspective"]["fovy"]
+        camera.data.lens = config["render"]["perspective"]["render_fovy"]
         camera.data.sensor_width = config["render"]["perspective"]["sensor_width"]
         camera.data.sensor_height = config["render"]["perspective"]["sensor_width"] / config["render"]["perspective"]["aspect"]
         camera.data.clip_start = config["render"]["perspective"]["znear"]

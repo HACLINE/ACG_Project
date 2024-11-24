@@ -43,6 +43,7 @@ load:
       - init: square # fromfile or square
         name: test.cloth
         scale: [10, 10]
+        delta_y: 0.5
         num: [20, 20]
         height: 5
         mass: 0.1
@@ -50,6 +51,7 @@ load:
         ks: [1000.0, 1000.0, 1000.0]
         kd: [0, 0, 0]
         damping: 0.00025
+        fix_corner: half
         
   wall:
     cfg:
@@ -98,4 +100,7 @@ simulation:
     max: [2.0, 2.0, 2.0]
 
 cuda:
+  enabled: false
+
+blender:
   enabled: true

@@ -66,6 +66,9 @@ int main(int argc, char* argv[]) {
     figuresPath = cwd_str + figuresPath;
     renderPath = cwd_str + renderPath;
 
+    command = "rm -rf " + figuresPath + " && mkdir " + figuresPath + " && rm -rf " + renderPath + " && mkdir " + renderPath;
+    system(command.c_str());
+
     setenv("CONFIG", args["config"].c_str(), 1);
     setenv("FIGURES", figuresPath.c_str(), 1);
     setenv("RENDER", renderPath.c_str(), 1);

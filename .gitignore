@@ -11,3 +11,7 @@ particles.ply
 mesh.obj
 .cache
 rendered.avi
+*.gz
+*.pdf
+# You can choose not to ignore the final report
+*.bbl

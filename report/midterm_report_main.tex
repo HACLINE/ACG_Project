@@ -1,8 +1,6 @@
 \section{TODO list: should be deleted before submission}
 
 \begin{itemize}
-\item Method - Rigid Body Simulation
-\item Method - Fluid Simulation
 \item Results
 \end{itemize}
 
@@ -20,11 +18,104 @@ Our final plan is to simulate cloth-fluid coupling together with container, and 
 
 \subsection{Rigid Body Simulation}
 
-TODO.
+We implemented a simple mesh based rigid body simulation. 
+
+\subsubsection{Collisions}
+
+We implemented an impulse-based collision detection with the box.
+
+First we detect the collision between the box and the rigid body, by checking the position and velocity of each vertex. Then we update normal and tangent velocity differently\eqref{label-rb-1}-\eqref{label-rb-6}.
+\begin{equation}
+  \label{eq-rb-1}
+\mathbf{v}_{\mathbf{N},i}=(\mathbf{v}_i\cdot \mathbf{N})\mathbf{N}
+\end{equation}
+\begin{equation}
+  \label{eq-rb-2}
+\mathbf{v}_{\mathbf{T},i}=\mathbf{v}_i-\mathbf{v}_{\mathbf{N},i}
+\end{equation}
+\begin{equation}
+  \label{eq-rb-3}
+  \alpha=\max\left(1-\mu_{\mathbf{T}}(1+\mu_{\mathbf{N}})\left\lVert \mathbf{v}_{\mathbf{N},i}\right\rVert/\left\lVert \mathbf{v}_{\mathbf{T},i}\right\rVert, 0\right)
+\end{equation}
+\begin{equation}
+  \label{eq-rb-4}
+  \mathbf{v}_{\mathbf{N},i}^{new}=-\mu_{\mathbf{N}}\mathbf{v}_{\mathbf{N},i}
+\end{equation}
+\begin{equation}
+  \label{eq-rb-5}
+  \mathbf{v}_{\mathbf{T},i}^{new}=\alpha\mathbf{v}_{\mathbf{T},i}
+\end{equation}
+\begin{equation}
+  \label{eq-rb-6}
+  \mathbf{v}_i^{new}=\mathbf{v}_{\mathbf{N},i}^{new}+\mathbf{v}_{\mathbf{T},i}^{new}
+\end{equation}
+
+After updating the velocity on a vertex, we update whole rigid body's velocity and angular velocity by an impulse method\eqref{eq-rb-7}-\eqref{eq-rb-10}. 
+\begin{equation}
+  \label{eq-rb-7}
+  \mathbf{K}=\frac{1}{M}\mathbf{1}-[\mathbf{R}\mathbf{r}_i]I^{-1}[\mathbf{R}\mathbf{r}_i]
+\end{equation}
+\begin{equation}
+  \label{eq-rb-8}
+  \mathbf{j}=\mathbf{K}^{-1}(\mathbf{v}_i^{new}-\mathbf{v}_i)
+\end{equation}
+\begin{equation}
+  \label{eq-rb-9}
+  \mathbf{v}\leftarrow \mathbf{v}+\frac{1}{M}\mathbf{j}
+\end{equation}
+\begin{equation}
+  \label{eq-rb-10}
+  \mathbf{\omega}\leftarrow \mathbf{\omega}+\mathbf{I}^{-1}(\mathbf{R}\mathbf{r}_i\times \mathbf{j})
+\end{equation}
 
 \subsection{Fluid Simulation}
 
-TODO.
+Our fluid simulation employs a hybrid method of PIC\cite{harlow1964particle} and FLIP, henceforth referred to as PICFLIP. 
+
+\subsubsection{PIC\&FLIP}
+
+The PICFLIP method operates by simulating fluid dynamics within a grid-based framework, where the fluid is represented by particles that interact with both the grid and other particles. 
+
+In the beginning of an update step, we transfer the particle to the grid (P2G), using a kernel function $N$ to derive the velocity field from the particles\eqref{eq-pf-1}. After this we apply external force, but eliminate velocities on the boundary.
+\begin{equation}
+  \label{eq-pf-1}
+  \begin{pmatrix}\mathbf{v}\\1\end{pmatrix}=\begin{pmatrix}w\mathbf{v}\\w\end{pmatrix}=\sum_{i}N(\mathbf{x}_i-\mathbf{x})
+\end{equation}
+
+Then we calculate the divergence of the velocity field\eqref{eq-pf-2}, and solve the pressure Poisson equation to get the pressure field\eqref{eq-pf-3}. In divergence step, we use a scheduler $f$ to smooth the performance. 
+
+\begin{equation}
+  \label{eq-pf-2}
+  \nabla \cdot \mathbf{v}(x,y,z) = \sum_{cyc}(\mathbf{v}(x+1,y,z)-\mathbf{v}(x,y,z))-f(w(x,y,z))
+\end{equation}
+\begin{equation}
+  \label{eq-pf-3}
+  P^{k+1}(x,y,z)=\frac{1}{6}\left(\sum_{cyc}P^k(x+1,y,z)-\nabla \cdot \mathbf{v}(x,y,z)\right)
+\end{equation}
+
+After calculating the pressure forces, we subtract the velocity components that would lead to fluid compression.
+\begin{equation}
+  \label{eq-pf-4}
+  \nabla_x\mathbf{v}(x,y,z)=P(x,y,z)-P(x-1,y,z).
+\end{equation}
+\begin{equation}
+  \label{eq-pf-5}
+  \mathbf{v}(x,y,z)=\mathbf{v}(x,y,z)-\nabla\mathbf{v}(x,y,z).
+\end{equation}
+
+Finally, we transfer the velocity field back to the particles (G2P) and update the particles' positions and velocities. The final velocity is a linear combination of the original velocity and the velocity derived from the grid\eqref{eq-pf-6}\eqref{eq-pf-7}. We use a flipness parameter to control the proportion of the two velocities\eqref{eq-pf-8}. The position is updated by a halfway method, that is resampling the velocity with a halfway position.
+\begin{equation}
+  \label{eq-pf-6}
+  \mathbf{v}_{i,pic}=sample(\mathbf{v},\mathbf{x}_i)
+\end{equation}
+\begin{equation}
+  \label{eq-pf-7}
+  \mathbf{v}_{i,flip}=\mathbf{v}_i+\mathbf{v}_{i,pic}-sample(\mathbf{v}_{orig},\mathbf{x}_i)
+\end{equation}
+\begin{equation}
+  \label{eq-pf-8}
+  \mathbf{v}_{new}=(1-flipness)\cdot\mathbf{v}_{i,pic}+flipness\cdot\mathbf{v}_{i,flip}
+\end{equation}
 
 \subsection{Cloth Simulation}
 

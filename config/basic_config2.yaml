@@ -1,4 +1,5 @@
 render:
+  enable_gl: true
   init:
     argc: 0
     argv: []
@@ -11,15 +12,35 @@ render:
   viewport: [0, 0, 800, 600]
   perspective: 
     fovy: 45.0
+    render_fovy: 30.0
     aspect: 1.3333
     znear: 1.0
     zfar: 1000.0
+    sensor_width: 36.0
   clearcolor: [1.0, 1.0, 1.0, 1.0]
   light:
     position: [0.5, 1.0, 0.0, 0.0]
     ambient: [0.2, 0.2, 0.2, 1.0]
     diffuse: [0.8, 0.8, 0.8, 1.0]
     specular: [1.0, 1.0, 1.0, 1.0]
+    energy: 20
+  background:
+    color: [0.0, 0.0, 0.0, 1.0]
+  resolution:
+    x: 800
+    y: 600
+    percentage: 100
+  reconstruction:
+    radius: 0.03
+    laplacian: 2.0
+    curvature: 0.5
+    surfacetension: 0.6
+    subdomain-grid: true
+    mesh-cleanup: true
+    mesh-smoothing-weights: true
+    mesh-smoothing-iters: 25
+    normals: true
+    normals-smoothing-iters: 10
 
 load:
   rigidbody:
@@ -28,8 +49,8 @@ load:
     cfg: []
     # [name, pos, scale]
   fluid:
-    base: basic_DFSPH.yaml
-    type: DFSPH
+    base: basic_PICFLIP.yaml
+    type: PICFLIP
     path: /assets/fluid
     cfg: []
   cloth:
@@ -54,7 +75,15 @@ simulation:
     max: [2.0, 2.0, 2.0]
   restitution: 0.2
   friction: 0.5
+  resolution: [40, 40, 40]
+  wall_thickness: 0.005
+  coupling:
+    neighborhood_size: 30
+    hash_table_size: 200
 
 cuda:
   enabled: false
   block_size: 512
+
+blender:
+  enabled: false

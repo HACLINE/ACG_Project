@@ -12,6 +12,7 @@ render:
   viewport: [0, 0, 800, 600]
   perspective: 
     fovy: 45.0
+    render_fovy: 30.0
     aspect: 1.3333
     znear: 1.0
     zfar: 1000.0
@@ -48,8 +49,8 @@ load:
     cfg: []
     # [name, pos, scale]
   fluid:
-    base: basic_DFSPH.yaml
-    type: DFSPH
+    base: basic_PICFLIP.yaml
+    type: PICFLIP
     path: /assets/fluid
     cfg: []
   cloth:

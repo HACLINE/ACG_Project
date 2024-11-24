@@ -57,6 +57,7 @@ load:
         ks: [1000.0, 1000.0, 1000.0]
         kd: [0, 0, 0]
         damping: 0.0005
+        fix_corner: true
   wall:
     cfg:
       # - type: triangle
@@ -95,7 +96,7 @@ load:
 
 video:
   fps: 20
-  sps: 60
+  sps: 100
   length: 6
 
 simulation:
@@ -108,4 +109,4 @@ cuda:
   enabled: true
 
 blender:
-  enabled: false
+  enabled: true
