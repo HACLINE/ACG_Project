@@ -43,15 +43,15 @@ load:
       - init: square # fromfile or square
         name: test.cloth
         scale: [10, 10]
-        delta_y: 0.5
+        delta_y: 2
         num: [20, 20]
         height: 5
         mass: 0.1
         radius: 0.02
         ks: [1000.0, 1000.0, 1000.0]
         kd: [0, 0, 0]
-        damping: 0.00025
-        fix_corner: half
+        damping: 0.0004
+        fix_corner: true
         
   wall:
     cfg:
@@ -90,9 +90,9 @@ load:
         
 
 video:
-  fps: 30
-  sps: 90
-  length: 8
+  fps: 20
+  sps: 200
+  length: 6
 
 simulation:
   box: 
@@ -100,7 +100,7 @@ simulation:
     max: [2.0, 2.0, 2.0]
 
 cuda:
-  enabled: false
+  enabled: true
 
 blender:
   enabled: true

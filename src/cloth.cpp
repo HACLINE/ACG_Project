@@ -113,11 +113,12 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, const YAML::Node
         // for (int i = 0; i < x_num; ++i) fixed_[i * z_num] = fixed_[i * z_num + (z_num-1)] = true;
         if (config["fix_corner"].as<std::string>() == "true") {
             fixed_[0] = fixed_[z_num - 1] = fixed_[particles_.size() - 1] = fixed_[particles_.size() - z_num] = true;
+            particles_[0].mass = particles_[z_num - 1].mass = particles_[particles_.size() - 1].mass = particles_[particles_.size() - z_num].mass = 999999.0f;
         } else if (config["fix_corner"].as<std::string>() == "half") {
             fixed_[0] = fixed_[z_num - 1] = true;
+            particles_[0].mass = particles_[z_num - 1].mass = 999999.0f;
         }
         // fixed_[0] = fixed_[z_num - 1] = true;
-        particles_[0].mass = particles_[z_num - 1].mass = particles_[particles_.size() - 1].mass = particles_[particles_.size() - z_num].mass = 999999.0f;
 
         std::cout << "[Load] Cloth: Load " << particles_.size() << " particles and " << springs_.size() << " springs" << std::endl;
     }

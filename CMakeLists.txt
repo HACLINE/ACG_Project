@@ -37,5 +37,5 @@ if(CUDAToolkit_FOUND)
     target_link_libraries(main CUDA::cudart)
 endif()
 
-target_link_libraries(main ${OpenCV_LIBS} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${CURL_LIBRARIES} ${GDK_PIXBUF_LIBRARIES} glm::glm yaml-cpp::yaml-cpp)
+target_link_libraries(main ${OpenCV_LIBS} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${CURL_LIBRARIES} ${GDK_PIXBUF_LIBRARIES} glm::glm yaml-cpp)
 set_target_properties(main PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

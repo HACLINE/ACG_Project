@@ -4,6 +4,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <geometry.h>
+#include <array>
 
 class MarchingCubes {
 public:
