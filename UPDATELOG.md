@@ -1,3 +1,8 @@
+### 2024.11.26 18:00
+by xqc & wxb
+Done:
+- **MIDTERM REPORT**.
+
 ### 2024.11.19 2:00
 by xqc
 Done:

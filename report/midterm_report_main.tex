@@ -1,9 +1,3 @@
-\section{TODO list: should be deleted before submission}
-
-\begin{itemize}
-\item Results
-\end{itemize}
-
 \section{Introduction}
 
 We have implemented a cloth-fluid coupling system using a combination of fluid and cloth simulation techniques. We also wrote rigid body simulation and its interaction with cloth. 
@@ -24,7 +18,7 @@ We implemented a simple mesh based rigid body simulation.
 
 We implemented an impulse-based collision detection with the box.
 
-First we detect the collision between the box and the rigid body, by checking the position and velocity of each vertex. Then we update normal and tangent velocity differently\eqref{label-rb-1}-\eqref{label-rb-6}.
+First we detect the collision between the box and the rigid body, by checking the position and velocity of each vertex. Then we update normal and tangent velocity differently \eqref{eq-rb-1}-\eqref{eq-rb-6}.
 \begin{equation}
   \label{eq-rb-1}
 \mathbf{v}_{\mathbf{N},i}=(\mathbf{v}_i\cdot \mathbf{N})\mathbf{N}
@@ -50,7 +44,7 @@ First we detect the collision between the box and the rigid body, by checking th
   \mathbf{v}_i^{new}=\mathbf{v}_{\mathbf{N},i}^{new}+\mathbf{v}_{\mathbf{T},i}^{new}
 \end{equation}
 
-After updating the velocity on a vertex, we update whole rigid body's velocity and angular velocity by an impulse method\eqref{eq-rb-7}-\eqref{eq-rb-10}. 
+After updating the velocity on a vertex, we update whole rigid body's velocity and angular velocity by an impulse method \eqref{eq-rb-7}-\eqref{eq-rb-10}. 
 \begin{equation}
   \label{eq-rb-7}
   \mathbf{K}=\frac{1}{M}\mathbf{1}-[\mathbf{R}\mathbf{r}_i]I^{-1}[\mathbf{R}\mathbf{r}_i]
@@ -70,19 +64,19 @@ After updating the velocity on a vertex, we update whole rigid body's velocity a
 
 \subsection{Fluid Simulation}
 
-Our fluid simulation employs a hybrid method of PIC\cite{harlow1964particle} and FLIP, henceforth referred to as PICFLIP. 
+Our fluid simulation employs a hybrid method of PIC \cite{harlow1964particle} and FLIP, henceforth referred to as PICFLIP. 
 
 \subsubsection{PIC\&FLIP}
 
 The PICFLIP method operates by simulating fluid dynamics within a grid-based framework, where the fluid is represented by particles that interact with both the grid and other particles. 
 
-In the beginning of an update step, we transfer the particle to the grid (P2G), using a kernel function $N$ to derive the velocity field from the particles\eqref{eq-pf-1}. After this we apply external force, but eliminate velocities on the boundary.
+In the beginning of an update step, we transfer the particle to the grid (P2G), using a kernel function $N$ to derive the velocity field from the particles \eqref{eq-pf-1}. After this we apply external force, but eliminate velocities on the boundary.
 \begin{equation}
   \label{eq-pf-1}
   \begin{pmatrix}\mathbf{v}\\1\end{pmatrix}=\begin{pmatrix}w\mathbf{v}\\w\end{pmatrix}=\sum_{i}N(\mathbf{x}_i-\mathbf{x})
 \end{equation}
 
-Then we calculate the divergence of the velocity field\eqref{eq-pf-2}, and solve the pressure Poisson equation to get the pressure field\eqref{eq-pf-3}. In divergence step, we use a scheduler $f$ to smooth the performance. 
+Then we calculate the divergence of the velocity field \eqref{eq-pf-2}, and solve the pressure Poisson equation to get the pressure field \eqref{eq-pf-3}. In divergence step, we use a scheduler $f$ to smooth the performance. 
 
 \begin{equation}
   \label{eq-pf-2}
@@ -103,7 +97,7 @@ After calculating the pressure forces, we subtract the velocity components that 
   \mathbf{v}(x,y,z)=\mathbf{v}(x,y,z)-\nabla\mathbf{v}(x,y,z).
 \end{equation}
 
-Finally, we transfer the velocity field back to the particles (G2P) and update the particles' positions and velocities. The final velocity is a linear combination of the original velocity and the velocity derived from the grid\eqref{eq-pf-6}\eqref{eq-pf-7}. We use a flipness parameter to control the proportion of the two velocities\eqref{eq-pf-8}. The position is updated by a halfway method, that is resampling the velocity with a halfway position.
+Finally, we transfer the velocity field back to the particles (G2P) and update the particles' positions and velocities. The final velocity is a linear combination of the original velocity and the velocity derived from the grid \eqref{eq-pf-6} \eqref{eq-pf-7}. We use a flipness parameter to control the proportion of the two velocities \eqref{eq-pf-8}. The position is updated by a halfway method, that is resampling the velocity with a halfway position.
 \begin{equation}
   \label{eq-pf-6}
   \mathbf{v}_{i,pic}=sample(\mathbf{v},\mathbf{x}_i)
@@ -168,7 +162,7 @@ where $l_{\text{rest}}$ is the initial distance between particles.
 
 \subsection{Cloth-Fluid Coupling}
 
-To do coupling, we need to calculate the force exerted by the fluid on the cloth. We treat materials as particles. Suppose the particles of fluid and cloth are $r_f$ and $r_c$ respectively. First we calculate the vertex normals of cloth using face normals, $n_v=\text{normalize}(\sum_{\text{adjacent}} n_f)$. Then, we detect the collision by updating every pair of particles $(p_f,p_c)$ such that $||p_f-p_c||\le r_f+r_c$, and update their position and speed along the normal direction, such that the momentum is conserved.
+To do coupling, we need to calculate the force exerted by the fluid on the cloth. We treat materials as particles. Suppose the particles of fluid and cloth are $r_f$ and $r_c$ respectively. First we calculate the vertex normals of cloth using face normals, $n_v=\text{normalize}(\sum_{\text{adjacent}} n_f)$. Then, we detect the collision by updating every pair of particles $(p_f,p_c)$ such that $||p_f-p_c||\le r_f+r_c=:\eta$, and update their position and speed along the normal direction, such that the momentum is conserved.
 
 To avoid permeation, we should iteratively check collisions until no collision is detected. In practice, we only need to check $N$ rounds on each fluid particle. Moreover, to control the permeability, we can tune the hyperparameters $N,r_f,r_c$.
 
@@ -184,7 +178,65 @@ To enable parallel computing, we detect all neighbors of each particle and updat
 
 \section{Results}
 
-TODO. Plan to have: fluid; cloth; cloth onto a sphere; fluid pour onto cloth (with different permeability)
+\subsection{Fluid Simulation}
+
+We simulate a fluid object with $20\times 40\times 20$ particles, as shown in Figure \ref{fig-fluid}. The first two images is the scene in OpenGL, and the last two is the corresponding frame in Blender.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.4\linewidth]{../project_demos/fg1.png}
+  \includegraphics[width=0.4\linewidth]{../project_demos/fg2.png}
+  \includegraphics[width=0.4\linewidth]{../project_demos/fb1.png}
+  \includegraphics[width=0.4\linewidth]{../project_demos/fb2.png}
+  \caption{Fluid simulation. Top: OpenGL; Bottom: Blender. Left: The fluid is initialized in two cuboids; Right: The scene after $1.5$ seconds.}
+  \label{fig-fluid}
+\end{figure}
+
+\subsection{Cloth Simulation}
+
+We simulate a cloth with $200\times 200$ particles, as shown in Figure \ref{fig-cloth}.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.4\linewidth]{../project_demos/cloth.png}
+  \caption{Cloth simulation}
+  \label{fig-cloth}
+\end{figure}
+
+We can see that the texture of the cloth is very realistic, and does not penetrate itself on the top. Note that, we can change the damping constant $k_{\text{damping}}$ to control the cloth's behavior, as shown in Figure \ref{fig-cloth-damping}.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.25\linewidth]{../project_demos/cloth2.png}
+  \includegraphics[width=0.25\linewidth]{../project_demos/cloth4.png}
+  \includegraphics[width=0.25\linewidth]{../project_demos/cloth6.png}
+  \caption{Cloth simulation with different damping constants (at $t=5.5$). Left: $k_{\text{damping}}=2\times 10^{-4}$; Middle: $k_{\text{damping}}=4\times 10^{-4}$; Right: $k_{\text{damping}}=6\times 10^{-4}$.}
+  \label{fig-cloth-damping}
+\end{figure}
+
+We also simulate a cloth with a sphere, as shown in Figure \ref{fig-cloth-sphere}, with cloth resolution $200\times 200$ as well. The XPBD method enables the cloth to adjust its texture smoothly.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.25\linewidth]{../project_demos/sfcoup.png}
+  \includegraphics[width=0.25\linewidth]{../project_demos/sfcoup2.png}
+  \includegraphics[width=0.25\linewidth]{../project_demos/sfcoup3.png}
+  \caption{Cloth collide with sphere; three sequential frames.}
+  \label{fig-cloth-sphere}
+\end{figure}
+
+\subsection{Cloth-fluid coupling}
+
+We simulate a cloth-fluid coupling system, as shown in Figure \ref{fig-coup}. The resolution of fluid and cloth is $20\times 40\times 20$ and $80\times 80$, respectively.
+
+As we have introduced above, we can adjust the value of $\eta$ to control the penetrating ratio of the fluid. If $\eta$ is large, as shown in the left, no penetration will be detected; on the other hand, when $\eta$ is small, as shown in the right, half of the fluid particles penetrate and cloth and half of them is blocked back, providing different visual effect.
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.4\linewidth]{../project_demos/coup1.png}
+  \includegraphics[width=0.415\linewidth]{../project_demos/coup2.png}
+  \caption{Cloth-fluid coupling. Left: $\eta=0.05$; Right: $\eta=0.03$.}
+  \label{fig-coup}
+\end{figure}
 
 \section{External Tools}
 
@@ -204,6 +256,7 @@ We only used the following external tools, and the only funtionality we used is 
 We decided to implement the following features in the future:
 
 \begin{itemize}
+\item Refine the coupling method to improve the stability and efficiency.
 \item A \textbf{control interface} to interpolate the simulation parameters and change the cloth's position in real-time.
 \item The \textbf{wetting effect} of the cloth.
 \item More \textbf{constraints} to simulate more complex cloth behaviors, such as collision with rigid bodies.
