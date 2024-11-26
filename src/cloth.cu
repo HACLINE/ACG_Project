@@ -7,6 +7,26 @@
 // Cloth
 // #########################################################################
 
+// collisionWithSphere
+void Cloth::collisionWithSphereCUDA(Sphere* sphere, float dt) {
+    int num_blocks = (num_particles_ + cuda_block_size_ - 1) / cuda_block_size_;
+    ClothcollisionWithSphereTask<<<num_blocks, cuda_block_size_>>>(cuda_particles_, num_particles_, sphere->center, sphere->radius, dt);
+    CUDA_SYNC();
+}
+
+__global__ void ClothcollisionWithSphereTask(Particle* particles, int num_particles, glm::vec3 center, float radius, float dt) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= num_particles) return;
+    glm::vec3 p = particles[idx].position;
+    glm::vec3 n = glm::normalize(p - center);
+    float dist = glm::length(p - center);
+    if (dist < radius) {
+        // correct position
+        particles[idx].position += (radius - dist) * n;
+    }
+}
+
+
 // computeNormals
 void Cloth::computeNormalsCUDA() {
     cudaMemset(cuda_vertex_norms_, 0, num_particles_ * sizeof(glm::vec3));

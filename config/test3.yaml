@@ -1,6 +1,6 @@
 # global
 name: test
-base: basic_config2.yaml
+base: basic_config.yaml
 
 render:
   title: WoBingWang
@@ -38,21 +38,21 @@ load:
       #   radius: 0.01 # these three required for cube
       #   mass: 6e-6
       #   rho: 1000.0
-  cloth: 
+  cloth:
+    # type: mass_spring 
     cfg:
       - init: square # fromfile or square
         name: test.cloth
         scale: [10, 10]
-        delta_y: 2
-        num: [200, 200]
+        num: [100, 100]
         height: 5
+        delta_y: 0
         mass: 0.1
         radius: 0.02
         ks: [1000.0, 1000.0, 1000.0]
         kd: [0, 0, 0]
         damping: 0.0002
         fix_corner: half
-        
   wall:
     cfg:
       # - type: triangle
@@ -69,9 +69,9 @@ load:
       #   thickness: 0.3
       #   restitution: 0.1
       #   friction: 0.9
-      # - type: sphere
-      #   center: [-5, -7, 0]
-      #   radius: 5
+      - type: sphere
+        center: [-5, -7, 0]
+        radius: 5
       # - type: triangle
       #   pos1: [0, -5, 10]
       #   pos2: [0, -15, -10]
@@ -91,7 +91,7 @@ load:
 
 video:
   fps: 20
-  sps: 200
+  sps: 60
   length: 6
 
 simulation:

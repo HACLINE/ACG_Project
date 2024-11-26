@@ -19,6 +19,9 @@ public:
     void collisionWithSphere(Sphere*, float);
     void selfCollision();
     void selfCorrectSpring();
+#ifdef HAS_CUDA
+    void collisionWithSphereCUDA(Sphere*, float);
+#endif
 
     void applyAcceleration(const glm::vec3& a, int i) { particles_[i].acceleration += a; }
     void applyAcceleration(const glm::vec3& a);
@@ -89,6 +92,7 @@ protected:
 };
 
 #ifdef HAS_CUDA
+__global__ void ClothcollisionWithSphereTask(Particle* particles, int num_particles, glm::vec3 center, float radius, float dt);
 __global__ void ClothcomputeFaceNormalsTask(Particle* particles, Face* faces, glm::vec3* vertex_norms, glm::vec3* face_norms, int num_particles, int num_faces);
 __global__ void ClothnormalizeVertexNormalsTask(glm::vec3* vertex_norms, int num_particles);
 __global__ void ClothapplyAccelerationTask(Particle* particles, bool* fixed, int num_particles, glm::vec3 a);

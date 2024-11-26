@@ -75,6 +75,17 @@ def trimesh_to_blender_object(trimesh_obj, object_name="Bunny"):
 
     return obj
 
+def render_sphere_from_file(file_path):
+    with open(file_path, 'r') as file:
+        line = file.readline().strip()
+        x, y, z, radius = map(float, line.split())
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=radius - 0.02, location=(x, y, z), segments=64, ring_count=32)
+        sphere = bpy.context.object
+        mat = bpy.data.materials.new(name="SphereMaterial")
+        mat.diffuse_color = (1, 0, 0, 1)  # Red color
+        sphere.data.materials.append(mat)
+    return sphere
+
 class Render:
     def __init__(self, config):#camera_location=(0, -0.25, 7), 
                 # camera_rotation=(0, 0, 0),
@@ -247,6 +258,10 @@ class Render:
                     all_mesh[-1].data.materials[0] = cloth_material
                 else:
                     all_mesh[-1].data.materials.append(cloth_material)
+        
+        sphere_files = [f for f in os.listdir(data_path + "/spheres") if f.endswith(".sphere")]
+        for sphere_file in sphere_files:
+            render_sphere_from_file(data_path + "/spheres/" + sphere_file)
         
         self.render_mesh(all_mesh, output_path)
             

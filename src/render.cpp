@@ -1,5 +1,6 @@
 #include "render.h"
 #include <iostream>
+#include <fstream>
 #ifdef __linux__
 #include <GL/glut.h>
 #else
@@ -19,6 +20,16 @@ void saveFrame(const std::string& filename, int width, int height) {
     glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer.data());
     stbi_flip_vertically_on_write(1);
     stbi_write_png(filename.c_str(), width, height, 3, buffer.data(), width * 3);
+}
+
+void saveSphereToFile(const Sphere* sphere, const std::string& filename) {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return;
+    }
+    file << sphere->center.x << " " << sphere->center.y << " " << sphere->center.z << " " << sphere->radius << std::endl;
+    file.close();
 }
 
 Renderer::Renderer(YAML::Node config, std::string figurePath) : config_(config), figuresPath_(figurePath) {
@@ -249,7 +260,7 @@ void Renderer::renderSimulation(const Simulation& simulation, int frame) {
         glutSwapBuffers();
     }
     std::string subdir = "./.cache/frame_" + intToString(frame, 6);
-    std::string command = "mkdir " + subdir + " && mkdir " + subdir + "/rigid_bodies && mkdir " + subdir + "/fluids && mkdir " + subdir + "/cloths";
+    std::string command = "mkdir " + subdir + " && mkdir " + subdir + "/rigid_bodies && mkdir " + subdir + "/fluids && mkdir " + subdir + "/cloths && mkdir " + subdir + "/spheres";
     system(command.c_str());
 
     for (int i = 0; i < simulation.getNumRigidbodies(); i++) {
@@ -266,6 +277,9 @@ void Renderer::renderSimulation(const Simulation& simulation, int frame) {
         saveMeshToOBJ(simulation.getCloth(i)->getMesh(), subdir + "/cloths/" + intToString(i, 2) + ".obj");
     }
 
+    for (int i = 0; i < simulation.getNumSpheres(); i++) {
+        saveSphereToFile(simulation.getSphere(i), subdir + "/spheres/" + intToString(i, 2) + ".sphere");
+    }
 
     // std::cerr << "[Render ERROR] Blender rendering does not support the following settings: " << std::endl;
     // std::cerr << "Rigidbodies: " << simulation.getNumRigidbodies() << std::endl;

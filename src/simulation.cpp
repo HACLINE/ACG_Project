@@ -159,6 +159,15 @@ void Simulation::update(float dt) {
     for (int i = 0; i < fluids_.size(); ++i) {
         collision::fluid_box_collision(fluids_[i], box_min_, box_max_, restitution_, friction_, cuda_);
     }
+    // for (int i = 0; i < cloths_.size(); ++i) {
+    //     for (int j = 0; j < walls_.size(); ++j) {
+    //         cloths_[i]->collisionWithTriangle(walls_[j], dt);
+    //     }
+    //     for (int j = 0; j < spheres_.size(); ++j) {
+    //         cloths_[i]->collisionWithSphere(spheres_[j], dt);
+    //     }
+    //     cloths_[i]->selfCollision();
+    // }
 }
 
 Rigidbody* Simulation::getRigidbody(int i) const {

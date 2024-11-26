@@ -7,7 +7,7 @@ render:
   title: WoBingWang
   clearcolor: [1.0, 1.0, 1.0, 1.0]
   camera:
-    eye: [5.0, 1.5, 5.0]
+    eye: [5.0, 3, 5.0]
     center: [0.0, 0.0, 0.0]
     up: [0.0, 1.0, 0.0]
 
@@ -36,28 +36,28 @@ load:
     base: basic_PICFLIP.yaml
     type: PICFLIP
     cfg: 
-      - init: cube # fromfile or cube
-        name: test.fluid # this required for fromfile
+      - init: fromfile # fromfile or cube
+        name: two_cuboid.fluid # this required for fromfile
         scale: [0.5, 1.0, 0.5]
         num: [20, 40, 20]
         # num: [10, 20, 10]
-        radius: 0.02 # these three required for cube
+        radius: 0.01 # these three required for cube
         mass: 6e-3
         rho: 1000.0
   cloth: 
     cfg:
-      - init: square # fromfile or square
-        name: test.cloth
-        scale: [1.8, 1.8]
-        delta_y: 0.5
-        num: [80, 80]
-        height: -0.62
-        mass: 0.1
-        radius: 0.03
-        ks: [1000.0, 1000.0, 1000.0]
-        kd: [0, 0, 0]
-        damping: 0.0005
-        fix_corner: true
+      # - init: square # fromfile or square
+      #   name: test.cloth
+      #   scale: [1.8, 1.8]
+      #   delta_y: 0.5
+      #   num: [80, 80]
+      #   height: -0.62
+      #   mass: 0.1
+      #   radius: 0.02
+      #   ks: [1000.0, 1000.0, 1000.0]
+      #   kd: [0, 0, 0]
+      #   damping: 0.0005
+      #   fix_corner: true
   wall:
     cfg:
       # - type: triangle

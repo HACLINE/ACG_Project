@@ -241,6 +241,13 @@ void Cloth::collisionWithTriangle(Triangle* tri, float dt) {
 }
 
 void Cloth::collisionWithSphere(Sphere* sphere, float dt) {
+#ifdef HAS_CUDA
+    if (cuda_enabled_) {
+        collisionWithSphereCUDA(sphere, dt);
+        cudaMemcpy(particles_.data(), cuda_particles_, num_particles_ * sizeof(Particle), cudaMemcpyDeviceToHost);
+        return;
+    }
+#endif
     for (int i = 0; i < num_particles_; ++i) {
         glm::vec3 p = particles_[i].position;
         glm::vec3 n = glm::normalize(p - sphere->center);
