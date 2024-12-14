@@ -1,4 +1,3 @@
-# global
 name: test
 base: basic_config.yaml
 
@@ -7,7 +6,7 @@ render:
   title: WoBingWang
   clearcolor: [1.0, 1.0, 1.0, 1.0]
   camera:
-    eye: [5.0, 3, 5.0]
+    eye: [5.0, 1.5, 5.0]
     center: [0.0, 0.0, 0.0]
     up: [0.0, 1.0, 0.0]
 
@@ -36,28 +35,29 @@ load:
     base: basic_PICFLIP.yaml
     type: PICFLIP
     cfg: 
-      - init: fromfile # fromfile or cube
-        name: two_cuboid.fluid # this required for fromfile
-        scale: [0.5, 1.0, 0.5]
-        num: [20, 40, 20]
+      - init: cube # fromfile or cube
+        name: test.fluid # this required for fromfile
+        scale: [0.8, 0.8, 0.8]
+        num: [40, 40, 40]
         # num: [10, 20, 10]
-        radius: 0.01 # these three required for cube
+        radius: 0.002 # these three required for cube
         mass: 6e-3
         rho: 1000.0
   cloth: 
     cfg:
-      # - init: square # fromfile or square
-      #   name: test.cloth
-      #   scale: [1.8, 1.8]
-      #   delta_y: 0.5
-      #   num: [80, 80]
-      #   height: -0.62
-      #   mass: 0.1
-      #   radius: 0.02
-      #   ks: [1000.0, 1000.0, 1000.0]
-      #   kd: [0, 0, 0]
-      #   damping: 0.0005
-      #   fix_corner: true
+      - init: square # fromfile or square
+        name: test.cloth
+        scale: [3, 3]
+        delta_y: 0.8
+        num: [80, 80]
+        height: -0.62
+        mass: 0.1
+        radius: 0.05
+        ks: [1000.0, 1000.0, 1000.0]
+        kd: [0, 0, 0]
+        damping: 0.0015
+        wetting_speed: 1.0
+        fix_corner: true
   wall:
     cfg:
       # - type: triangle
@@ -96,14 +96,14 @@ load:
 
 video:
   fps: 20
-  sps: 100
+  sps: 60
   length: 6
 
 simulation:
   box: 
-    min: [-1.0, -2.2, -1.0]
-    max: [1.0, 1.0, 1.0]
-  resolution: [30, 30, 30]
+    min: [-1.6, -2.2, -1.6]
+    max: [1.6, 1.0, 1.6]
+  resolution: [60, 60, 60]
 
 cuda:
   enabled: true

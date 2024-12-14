@@ -44,7 +44,8 @@ public:
 
     
     void computeNormals();
-
+    void wettingDiffusion(float dt);
+    
 #ifdef HAS_CUDA
     void computeNormalsCUDA();
 #endif
@@ -63,6 +64,7 @@ public:
     glm::vec3* getVertexNormalsCUDA() { return cuda_vertex_norms_; }
 #endif
     Mesh getMesh();
+    std::vector<float> getWettings();
 
     virtual std::vector<glm::vec3>& getOldPositions() { assert(false); }
 
@@ -89,6 +91,8 @@ protected:
 
     float damping_;
     SpatialHash hash_table_;
+
+    float wetting_speed_;
 };
 
 #ifdef HAS_CUDA

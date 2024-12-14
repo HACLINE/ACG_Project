@@ -1,4 +1,4 @@
-particles_per_cell: 2.5
+particles_per_cell: 4
 scheduler_scale: 2
 scheduler_temperature: 0.1
 jacobi_iters: 20

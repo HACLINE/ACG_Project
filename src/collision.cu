@@ -117,6 +117,11 @@ void collision::PICFLIP_XPBD_collision_CUDA(PICFLIPFluid* fluid, XPBDCloth* clot
     CUDA_SYNC();
 }
 
+__device__ float collision::calc_wetting_cuda(float dist, float r) {
+    if (dist >= r) return 0.0f;
+    return 1.0f - dist / r;
+}
+
 __global__ void collision::PICFLIP_XPBD_collision_Task1(Particle* fluid_particles, Particle* cloth_particles, glm::vec3* cloth_old_positions, glm::vec3* cloth_normals, Neighbourhood* fluid_cloth_neighbourhood, const int num_fluid_particles, const int num_cloth_particles, const float r, const float dt, VecWithInt* delta_cloth_positions, VecWithInt* delta_old_cloth_positions, VecWithInt* delta_fluid_positions, VecWithInt* delta_fluid_velocities) {
     int fluid_idx = blockIdx.x * blockDim.x + threadIdx.x;
     // int cloth_idx = fluid_idx % num_cloth_particles;
@@ -127,8 +132,11 @@ __global__ void collision::PICFLIP_XPBD_collision_Task1(Particle* fluid_particle
         glm::vec3 cp = cloth_particles[cloth_idx].position;
         glm::vec3 fp = fluid_particles[fluid_idx].position;
         glm::vec3 dir = cp - fp;
-        // if (glm::length(dir) >= r) return;
-        if (glm::length(dir) < r) {
+        float dist = glm::length(dir);
+        if (dist < r) {
+            float wetting = calc_wetting_cuda(dist, r);
+            atomicAdd(&cloth_particles[cloth_idx].wetting, wetting);
+
             glm::vec3 normal = cloth_normals[cloth_idx];
             if (glm::dot(dir, normal) < 0.0f) {
                 normal = -normal;

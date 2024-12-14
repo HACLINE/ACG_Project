@@ -56,6 +56,7 @@ struct Face {
 struct Particle {
     glm::vec3 position, velocity, acceleration;
     float radius, mass;
+    float wetting = 0.0f; // only used in the wetting affect of cloth
 };
 
 struct Spring {

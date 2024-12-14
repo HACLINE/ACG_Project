@@ -2,5 +2,5 @@ stiff:
   horizontal: 0.0001
   vertical: 0.0001
   shear: 0.0001
-  bend: 0.02
+  bend: 0.01
 iters: 15

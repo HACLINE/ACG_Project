@@ -19,35 +19,36 @@ Cloth::~Cloth() {
 
 Cloth::Cloth(const std::string& path, const YAML::Node& config, const YAML::Node& cuda, float kernel_radius, int hash_table_size): particles_(), hash_table_(kernel_radius, hash_table_size, particles_), cuda_enabled_(cuda["enabled"].as<bool>()), cuda_block_size_(cuda["block_size"].as<int>()) {
     if (config["init"].as<std::string>() == "fromfile") {
-        std::ifstream fin;
-        std::string filename = path + config["name"].as<std::string>();
-        fin.open(filename);
-        if (!fin) {
-            std::cerr << "Failed to open file: " << filename << std::endl;
-            return;
-        }
-        int opt;
-        while (fin >> opt) {
-            if (opt == 0) { // particle
-                float x, y, z, r, m;
-                fin >> x >> y >> z >> r >> m;
-                addVertex(glm::vec3(x, y, z), r, m);
-            }
-            else if (opt == 1) { // spring
-                float k_s, k_d, rest_length;
-                int p1, p2, type;
-                fin >> p1 >> p2 >> k_s >> k_d >> rest_length >> type;
-                springs_.push_back(Spring{p1, p2, k_s, k_d, rest_length, type});
-            }
-            else if (opt == 2) { // face (should add after particle!)
-                int p1, p2, p3;
-                fin >> p1 >> p2 >> p3;
-                addFace(Face{p1, p2, p3});
-            }
-        }
-        fixed_ = std::vector<bool>(particles_.size(), false);
-        fin.close();
-        std::cout << "[Load] Cloth: Load " << particles_.size() << " particles, " << springs_.size() << " springs from " << filename << std::endl;
+        throw std::runtime_error("Not Implemented: Cloth init from file");
+        // std::ifstream fin;
+        // std::string filename = path + config["name"].as<std::string>();
+        // fin.open(filename);
+        // if (!fin) {
+        //     std::cerr << "Failed to open file: " << filename << std::endl;
+        //     return;
+        // }
+        // int opt;
+        // while (fin >> opt) {
+        //     if (opt == 0) { // particle
+        //         float x, y, z, r, m;
+        //         fin >> x >> y >> z >> r >> m;
+        //         addVertex(glm::vec3(x, y, z), r, m);
+        //     }
+        //     else if (opt == 1) { // spring
+        //         float k_s, k_d, rest_length;
+        //         int p1, p2, type;
+        //         fin >> p1 >> p2 >> k_s >> k_d >> rest_length >> type;
+        //         springs_.push_back(Spring{p1, p2, k_s, k_d, rest_length, type});
+        //     }
+        //     else if (opt == 2) { // face (should add after particle!)
+        //         int p1, p2, p3;
+        //         fin >> p1 >> p2 >> p3;
+        //         addFace(Face{p1, p2, p3});
+        //     }
+        // }
+        // fixed_ = std::vector<bool>(particles_.size(), false);
+        // fin.close();
+        // std::cout << "[Load] Cloth: Load " << particles_.size() << " particles, " << springs_.size() << " springs from " << filename << std::endl;
     } else if (config["init"].as<std::string>() == "square") {
         int x_num = config["num"][0].as<int>(), z_num = config["num"][1].as<int>();
         num_x_ = x_num, num_z_ = z_num;
@@ -127,6 +128,7 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, const YAML::Node
     num_springs_ = springs_.size();
     num_faces_ = faces_.size();
     damping_ = config["damping"].as<float>();
+    wetting_speed_ = config["wetting_speed"].as<float>();
     // std::cout << "KR: "<<kernel_radius<<", HTS: "<<hash_table_size<<", NP: "<<num_particles_<<std::endl;
 #ifdef HAS_CUDA
     if (cuda_enabled_) {
@@ -339,16 +341,46 @@ void Cloth::computeForces() {
 }
 
 Mesh Cloth::getMesh() {
-    // std::cout << "getmesh!!!" << std::endl;
     Mesh mesh;
     mesh.vertices.clear();
     mesh.faces = faces_;
     for (int i = 0; i < num_particles_; ++i) {
         mesh.vertices.push_back(Vertex{particles_[i].position});
-        // std::cout << particles_[i].position.y << " ";
     }
-    // std::cout << std::endl;
     return mesh;
+}
+
+std::vector<float> Cloth::getWettings() {
+    std::vector<float> wettings;
+    wettings.clear();
+    for (int i = 0; i < num_particles_; ++i) {
+        wettings.push_back(particles_[i].wetting);
+    }
+    return wettings;
+}
+
+void Cloth::wettingDiffusion(float dt) {
+    int dx[4] = {0, 0, 1, -1}, dz[4] = {1, -1, 0, 0};
+    float coeff = dt * wetting_speed_;
+    std::vector<std::pair<float, float> > new_wettings(num_particles_, std::make_pair(0.0f, 0.0f));
+    for (int i = 0; i < num_z_; ++i) {
+        for (int j = 0; j < num_x_; ++j) {
+            int ind = i * num_z_ + j;
+            float sum = 0.0f;
+            float cnt = 0.0f;
+            for (int k = 0; k < 4; ++k) {
+                int x = j + dx[k], z = i + dz[k];
+                if (x >= 0 && x < num_x_ && z >= 0 && z < num_z_) {
+                    sum += particles_[z * num_z_ + x].wetting;
+                    cnt += 1.0f;
+                }
+            }
+            new_wettings[ind] = std::make_pair(sum, cnt);
+        }
+    }
+    for (int i = 0; i < num_particles_; ++i) {
+        particles_[i].wetting = (1.0 - new_wettings[i].second * coeff) * particles_[i].wetting + new_wettings[i].first * coeff;
+    }
 }
 
 XPBDCloth::XPBDCloth(const std::string& path, const YAML::Node& config, const YAML::Node& cuda, float kernel_radius, int hash_table_size): Cloth(path, config, cuda, kernel_radius, hash_table_size) {
@@ -472,4 +504,7 @@ void XPBDCloth::update(float dt) {
         particles_[i].acceleration = glm::vec3(0.0f);
         force_buffer_[i] = glm::vec3(0.0f);
     }
+
+    // wetting effect
+    wettingDiffusion(dt);
 }

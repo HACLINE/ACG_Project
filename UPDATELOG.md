@@ -1,3 +1,9 @@
+### 2024.12.14 14:00
+by wxb
+Done:
+- `render.py` rewritten.
+- Wetting effect of cloth when pouring fluid on it. Also added this feature in `collision.cu` to be compatible with CUDA.
+
 ### 2024.11.26 18:00
 by xqc & wxb
 Done:

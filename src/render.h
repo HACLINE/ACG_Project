@@ -19,7 +19,7 @@ public:
     void initializeOpenGL(YAML::Node config);
     void initializeReconstruction(YAML::Node config);
 
-    void renderMesh(const Mesh&, glm::vec3);
+    void renderMesh(const Mesh&, glm::vec3, std::vector<float>);
     void renderParticles(const std::vector<Particle>&);
 
     void renderRigidbody(Rigidbody*);

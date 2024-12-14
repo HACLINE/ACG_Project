@@ -117,20 +117,59 @@ void Renderer::initializeReconstruction(YAML::Node config) {
     reconstruction_args_ += "--normals-smoothing-iters=" + config["reconstruction"]["normals-smoothing-iters"].as<std::string>() + " ";
 }
 
-void Renderer::renderMesh(const Mesh& mesh, glm::vec3 color = glm::vec3(0.0f, 0.8f, 0.2f)) {
+void Renderer::renderMesh(const Mesh& mesh, glm::vec3 color = glm::vec3(0.0f, 0.8f, 0.2f), std::vector<float> wettings = {}) {
+    auto interpolate_color = [](float w) {
+        const float MIN = 0.5f, MAX = 1.0f;
+        const float THRES1 = 0.3f, THRES2 = 50.0f;
+        // if (w > THRES2) {
+        //     return MIN;
+        // } else if (w > THRES1) {
+        //     return MIN + (w - THRES1) / (THRES2 - THRES1) * (MAX - MIN);
+        // } else {
+        //     return MAX;
+        // }
+        if (w < THRES1) {
+            return MAX;
+        } else {
+            return MIN + THRES1 * (MAX - MIN) / w;
+        }
+    };
+
     glBegin(GL_TRIANGLES);
-    for (const auto& face : mesh.faces) {
-        const glm::vec3& v1 = mesh.vertices[face.v1].position;
-        const glm::vec3& v2 = mesh.vertices[face.v2].position;
-        const glm::vec3& v3 = mesh.vertices[face.v3].position;
+    if (wettings.empty()) {
+        for (const auto& face : mesh.faces) {
+            const glm::vec3& v1 = mesh.vertices[face.v1].position;
+            const glm::vec3& v2 = mesh.vertices[face.v2].position;
+            const glm::vec3& v3 = mesh.vertices[face.v3].position;
 
-        glm::vec3 normal = glm::normalize(glm::cross(v2 - v1, v3 - v1));
-        glNormal3f(normal.x, normal.y, normal.z);
+            glm::vec3 normal = glm::normalize(glm::cross(v2 - v1, v3 - v1));
+            glNormal3f(normal.x, normal.y, normal.z);
 
-        glColor3f(color.x, color.y, color.z);
-        glVertex3f(v1.x, v1.y, v1.z);
-        glVertex3f(v2.x, v2.y, v2.z);
-        glVertex3f(v3.x, v3.y, v3.z);
+            glColor3f(color.x, color.y, color.z);
+            glVertex3f(v1.x, v1.y, v1.z);
+            glVertex3f(v2.x, v2.y, v2.z);
+            glVertex3f(v3.x, v3.y, v3.z);
+        }
+    } else {
+        assert(wettings.size() == mesh.vertices.size());
+        for (const auto& face : mesh.faces) {
+            const glm::vec3& v1 = mesh.vertices[face.v1].position;
+            const glm::vec3& v2 = mesh.vertices[face.v2].position;
+            const glm::vec3& v3 = mesh.vertices[face.v3].position;
+            float w1 = interpolate_color(wettings[face.v1]);
+            float w2 = interpolate_color(wettings[face.v2]);
+            float w3 = interpolate_color(wettings[face.v3]);
+
+            glm::vec3 normal = glm::normalize(glm::cross(v2 - v1, v3 - v1));
+            glNormal3f(normal.x, normal.y, normal.z);
+
+            glColor3f(w1 * color.x, w1 * color.y, w1 * color.z);
+            glVertex3f(v1.x, v1.y, v1.z);
+            glColor3f(w2 * color.x, w2 * color.y, w2 * color.z);
+            glVertex3f(v2.x, v2.y, v2.z);
+            glColor3f(w3 * color.x, w3 * color.y, w3 * color.z);
+            glVertex3f(v3.x, v3.y, v3.z);
+        }
     }
     glEnd();
 }
@@ -215,7 +254,7 @@ void Renderer::renderFluid(Fluid* fluid, int method = SPLASH_SURF) {
 }
 
 void Renderer::renderCloth(Cloth* cloth) {
-    renderMesh(cloth->getMesh(), glm::vec3(0.8f, 0.0f, 0.0f));
+    renderMesh(cloth->getMesh(), glm::vec3(0.8f, 0.0f, 0.0f), cloth->getWettings());
 }
 
 void Renderer::renderTriangle(Triangle* triangle) {
