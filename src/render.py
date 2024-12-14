@@ -4,6 +4,16 @@ import trimesh
 import yaml
 import os
 
+DEFAULT_MESH_MATERIAL = "DoubleSidedMaterial"
+SPHERE_MATERIAL = "SphereMaterial"
+FLUID_MATERIAL = "Water"
+CLOTH_MATERIAL = "Realistic procedural gold"
+CONTAINER_MATERIAL = "Scratched Glass (Procedural)"
+
+FLUID_MAT_PATH = "assets/water.blend"
+CLOTH_MAT_PATH = "assets/rigid.blend"
+CONTAINER_MAT_PATH = "assets/glass.blend"
+
 def load_config(config_path):
     def merge(base, update):
         for key, value in update.items():
@@ -32,67 +42,62 @@ def int_to_string(num, length):
         num = "0" + num
     return num
 
-def trimesh_to_blender_object(trimesh_obj, object_name="Bunny"):
-    mesh = bpy.data.meshes.new(object_name)
-    bm = bmesh.new()
-
-    for vertex in trimesh_obj.vertices:
-        bm.verts.new(vertex)
-    bm.verts.ensure_lookup_table()
-
-    existing_faces = set()
-    for face in trimesh_obj.faces:
-        face_tuple = tuple(sorted(face))
-        if face_tuple in existing_faces:
-            continue
-        try:
-            bm.faces.new([bm.verts[i] for i in face])
-            existing_faces.add(face_tuple)
-        except ValueError:
-            continue
-    bm.faces.ensure_lookup_table()
-    bm.to_mesh(mesh)
-    bm.free()
-
-    obj = bpy.data.objects.new(object_name, mesh)
-    bpy.context.collection.objects.link(obj)
-
-    if not obj.data.materials:
-        mat = bpy.data.materials.new(name="DoubleSidedMaterial")
-        obj.data.materials.append(mat)
-    else:
-        mat = obj.data.materials[0]
+def mesh_to_blender(obj, name):
+    obj_mesh = bpy.data.meshes.new(name)
     
-    mat.use_backface_culling = False  
+    # process mesh using bmesh
+    _mesh = bmesh.new()
+    for v in obj.vertices: 
+        _mesh.verts.new(v)
+    _mesh.verts.ensure_lookup_table()
+    faces = set()
+    for f in obj.faces:
+        t = tuple(sorted(f))
+        if f not in faces: # eliminate duplicate faces
+            try:
+                _mesh.faces.new([_mesh.verts[i] for i in f])
+                faces.add(t)
+            except ValueError:
+                print("[Blender] Encountered value error when processing face.")
+    _mesh.faces.ensure_lookup_table()
+    _mesh.to_mesh(obj_mesh)
+    _mesh.free()
 
-    # mesh_info = {
-    #     "name": obj.name,
-    #     "vertices": len(obj.data.vertices),
-    #     "edges": len(obj.data.edges),
-    #     "faces": len(obj.data.polygons)
-    # }
-    # print(f"Mesh Info: {mesh_info}")
+    blender_object = bpy.data.objects.new(name, obj_mesh)
+    
+    bpy.context.collection.objects.link(blender_object)
+    if not obj.data.materials:
+        material = bpy.data.materials.new(name=DEFAULT_MESH_MATERIAL)
+        blender_object.data.materials.append(material)
+    else:
+        material = blender_object.data.materials[0]
+    material.use_backface_culling = False
+    
+    assert name == blender_object.name
+    print(f"[Blender] Mesh name: {name} has been added to the scene. Info: {len(blender_object.data.vertices)} vertices, {len(blender_object.data.edges)} edges, {len(blender_object.data.polygons)} faces.")
 
     return obj
 
-def render_sphere_from_file(file_path):
+def render_sphere_from_file(file_path, radius_offset=0.02):
     with open(file_path, 'r') as file:
         line = file.readline().strip()
         x, y, z, radius = map(float, line.split())
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=radius - 0.02, location=(x, y, z), segments=64, ring_count=32)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=radius - radius_offset, location=(x, y, z), segments=64, ring_count=32)
         sphere = bpy.context.object
-        mat = bpy.data.materials.new(name="SphereMaterial")
-        mat.diffuse_color = (1, 0, 0, 1)  # Red color
-        sphere.data.materials.append(mat)
+        material = bpy.data.materials.new(name=SPHERE_MATERIAL)
+        material.diffuse_color = (1, 0, 0, 1)  # Red color
+        sphere.data.materials.append(material)
     return sphere
 
+def process_material(mesh, material):
+        if mesh.data.materials:
+            mesh.data.materials[0] = material
+        else:
+            mesh.data.materials.append(material)
+
 class Render:
-    def __init__(self, config):#camera_location=(0, -0.25, 7), 
-                # camera_rotation=(0, 0, 0),
-                # bg_color=(0, 0, 0, 1), 
-                # light_location=(0, 5, -6), 
-                # light_energy=2000):
-#         render:
+    def __init__(self, config):
+# render:
 #   init:
 #     argc: 0
 #     argv: []
@@ -129,16 +134,16 @@ class Render:
             -direction
         )).transposed()
         camera_rotation = rotation_matrix.to_euler()
-        
 
         bg_color = tuple(config["render"]["background"]["color"])
-        light_location = tuple(config["render"]["light"]["position"][:3])
+        light_position = tuple(config["render"]["light"]["position"][:3])
         light_energy = config["render"]["light"]["energy"]
 
-        bpy.ops.object.select_all(action='SELECT')
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in bpy.context.scene.objects:
+            obj.select_set(True)
         bpy.ops.object.delete()
-
-        bpy.ops.object.camera_add(location=camera_location, rotation=camera_rotation)
+        
         camera = bpy.context.object
         camera.data.lens = config["render"]["perspective"]["render_fovy"]
         camera.data.sensor_width = config["render"]["perspective"]["sensor_width"]
@@ -147,14 +152,11 @@ class Render:
         camera.data.clip_end = config["render"]["perspective"]["zfar"]
         camera.data.lens_unit = 'FOV'
 
-        bpy.context.scene.camera = camera
-        bpy.context.scene.world.use_nodes = True
-        world = bpy.context.scene.world
-        node_tree = world.node_tree
-        nodes = node_tree.nodes
-        links = node_tree.links
-        for node in nodes:
-            nodes.remove(node)
+        bpy.context.scene.camera, bpy.context.scene.world.use_nodes = camera, True
+        node_tree = bpy.context.scene.world.node_tree
+        nodes, links = node_tree.nodes, node_tree.links
+        for _ in nodes:
+            nodes.remove(_)
 
         bg_node = nodes.new(type='ShaderNodeBackground')
         bg_node.inputs['Color'].default_value = bg_color
@@ -169,13 +171,11 @@ class Render:
         bg_node.inputs['Color'].default_value = bg_color
 
         if config["render"]["light"]["position"][3] == 1:
-            bpy.ops.object.light_add(type='POINT', location=light_location)
+            bpy.ops.object.light_add(type='POINT', location=light_position)
         else:
-            bpy.ops.object.light_add(type='SUN', location=light_location)
-        light = bpy.context.object
-        light.data.energy = light_energy
-        
-        self.fluid_mesh = []
+            bpy.ops.object.light_add(type='SUN', location=light_position)
+            
+        bpy.context.object.data.energy = light_energy
         
     def look_at(self, obj_camera, point):
         loc_camera = obj_camera.matrix_world.to_translation()
@@ -185,8 +185,8 @@ class Render:
 
         obj_camera.rotation_euler = rot_quat.to_euler()
         
-    def render_mesh(self, mesh_list:list, output_path):    
-        for mesh in mesh_list:
+    def render_mesh(self, meshes: list, pth):    
+        for mesh in meshes:
             bpy.context.view_layer.objects.active = mesh
             mesh.select_set(True)
         
@@ -195,40 +195,8 @@ class Render:
         bpy.context.scene.render.resolution_percentage = self.config["render"]["resolution"]["percentage"]
 
         bpy.context.scene.render.image_settings.file_format = 'PNG'
-        bpy.context.scene.render.filepath = output_path
+        bpy.context.scene.render.filepath = pth
         bpy.ops.render.render(write_still=True)
-        
-        return output_path
-        
-    def render_coupled_fluid_rigid(self, fluid_mesh_path, rigid_mesh_path, container_mesh_path, output_path):
-        bpy.ops.object.select_all(action='DESELECT')
-        for obj in bpy.data.objects:
-            if obj.type == 'MESH':
-                obj.select_set(True)
-        bpy.ops.object.delete()
-
-        fluid_mesh = trimesh.load(fluid_mesh_path)
-
-        fluid_material = self.get_material("Water", "assets/water.blend")
-        
-        fluid_mesh = trimesh_to_blender_object(fluid_mesh, object_name="Fluid")
-        if fluid_mesh.data.materials:
-            fluid_mesh.data.materials[0] = fluid_material
-        else:
-            fluid_mesh.data.materials.append(fluid_material)
-
-        rigid_mesh = trimesh.load(rigid_mesh_path)
-
-        rigid_material = self.get_material('Realistic procedural gold', 'assets/rigid.blend')
-        rigid_mesh = trimesh_to_blender_object(rigid_mesh, object_name="Rigid")
-        if rigid_mesh.data.materials:
-            rigid_mesh.data.materials[0] = rigid_material
-        else:
-            rigid_mesh.data.materials.append(rigid_material)
-        
-        # container_mesh = trimesh.load(container_mesh_path)
-        # container_mesh = self.add_container(container_mesh)
-        self.render_mesh([fluid_mesh, rigid_mesh], output_path)
 
     def render_all(self, data_path, container_mesh_path, output_path):
         bpy.ops.object.select_all(action='DESELECT')
@@ -239,25 +207,19 @@ class Render:
 
         all_mesh = []
 
-        fluid_material = self.get_material("Water", "assets/water.blend")
+        fluid_material = self.get_material(FLUID_MATERIAL, FLUID_MAT_PATH)
         if self.config["load"]["fluid"]["cfg"] is not None:
             for i in range(len(self.config["load"]["fluid"]["cfg"])):
                 all_mesh.append(trimesh.load(data_path + "/fluids/" + int_to_string(i, 2) + ".obj"))
-                all_mesh[-1] = trimesh_to_blender_object(all_mesh[-1], object_name="Fluid" + int_to_string(i, 2))
-                if all_mesh[-1].data.materials:
-                    all_mesh[-1].data.materials[0] = fluid_material
-                else:
-                    all_mesh[-1].data.materials.append(fluid_material)
+                all_mesh[-1] = mesh_to_blender(all_mesh[-1], "Fluid" + int_to_string(i, 2))
+                process_material(all_mesh[-1], fluid_material)
         
-        cloth_material = self.get_material('Realistic procedural gold', 'assets/rigid.blend')
+        cloth_material = self.get_material(CLOTH_MATERIAL, CLOTH_MAT_PATH)
         if self.config["load"]["cloth"]["cfg"] is not None:
             for i in range(len(self.config["load"]["cloth"]["cfg"])):
                 all_mesh.append(trimesh.load(data_path + "/cloths/" + int_to_string(i, 2) + ".obj"))
-                all_mesh[-1] = trimesh_to_blender_object(all_mesh[-1], object_name="Cloth" + int_to_string(i, 2))
-                if all_mesh[-1].data.materials:
-                    all_mesh[-1].data.materials[0] = cloth_material
-                else:
-                    all_mesh[-1].data.materials.append(cloth_material)
+                all_mesh[-1] = mesh_to_blender(all_mesh[-1], "Cloth" + int_to_string(i, 2))
+                process_material(all_mesh[-1], cloth_material)
         
         sphere_files = [f for f in os.listdir(data_path + "/spheres") if f.endswith(".sphere")]
         for sphere_file in sphere_files:
@@ -267,24 +229,17 @@ class Render:
             
         
     def add_container(self, container_mesh):
-        glass_material = self.get_material("Scratched Glass (Procedural)", "assets/glass.blend")
-        
-        container_mesh = trimesh_to_blender_object(container_mesh, object_name="Container")
-        if container_mesh.data.materials:
-            container_mesh.data.materials[0] = glass_material
-        else:
-            container_mesh.data.materials.append(glass_material)
+        glass_material = self.get_material(CONTAINER_MATERIAL, CONTAINER_MAT_PATH)
+        container_mesh = mesh_to_blender(container_mesh, "Container")
+        process_material(container_mesh, glass_material)
         return container_mesh
         
-    def get_material(self, material_name, file_name):
-        blend_file_path = file_name
-        with bpy.data.libraries.load(blend_file_path, link=False) as (data_from, data_to):
-            if material_name in data_from.materials:
-                data_to.materials = [material_name]
-            else:
-                raise ValueError(f"Material {material_name} not found in {blend_file_path}")
-
-        return data_to.materials[0]
+    def get_material(self, mat_name, file_name):
+        with bpy.data.libraries.load(file_name, link=False) as (df, dt):
+            if mat_name not in df.materials:
+                raise ValueError(f"Material {mat_name} not found in {file_name}")
+            dt.materials = [mat_name]
+        return dt.materials[0]
     
 def main():
     assert 'CONFIG' in os.environ, "CONFIG environment variable not set"
