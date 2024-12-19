@@ -464,8 +464,6 @@ void XPBDCloth::update(float dt) {
     // add external forces
 #ifdef HAS_CUDA
     if (cuda_enabled_) {
-        cudaMemcpy(cuda_particles_, particles_.data(), num_particles_ * sizeof(Particle), cudaMemcpyHostToDevice);
-        cudaMemcpy(cuda_fixed_, fixed_, num_particles_ * sizeof(bool), cudaMemcpyHostToDevice);
         updateCUDA(dt);
         cudaMemcpy(particles_.data(), cuda_particles_, num_particles_ * sizeof(Particle), cudaMemcpyDeviceToHost);
         return;
