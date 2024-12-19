@@ -1,17 +1,13 @@
 if [[ ! -d build ]]; then
-    echo "good"
-else
-    rm -rf build
+    mkdir build
 fi
-mkdir -p build
 cd build
 cmake ..
 make -j
 
-mkdir config
-mkdir assets
-mkdir figures
-mkdir render
+if [[ -d .cache ]]; then
+    echo "good"
+else
+    rm -rf .cache
+fi
 mkdir .cache
-cp -r ../config/* config/
-cp -r ../assets/* assets/

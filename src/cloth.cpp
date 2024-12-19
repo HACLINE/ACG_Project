@@ -109,7 +109,8 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, const YAML::Node
             }
         }
 
-        fixed_ = std::vector<bool>(particles_.size(), false);
+        fixed_ = new bool[num_particles_];
+        memset(fixed_, 0, num_particles_ * sizeof(bool));
         // for (int i = 0; i < z_num; ++i) fixed_[i] = fixed_[(x_num-1) * z_num + i] = true;
         // for (int i = 0; i < x_num; ++i) fixed_[i * z_num] = fixed_[i * z_num + (z_num-1)] = true;
         if (config["fix_corner"].as<std::string>() == "true") {
@@ -146,12 +147,7 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, const YAML::Node
         face_norms_ = std::vector<glm::vec3>();
         vertex_norms_ = std::vector<glm::vec3>();
         
-        bool *tmp = new bool[num_particles_];
-        for (int i = 0; i < num_particles_; ++i) {
-            tmp[i] = fixed_[i];
-        }
-        cudaMemcpy(cuda_fixed_, tmp, num_particles_ * sizeof(bool), cudaMemcpyHostToDevice);
-        delete[] tmp;
+        cudaMemcpy(cuda_fixed_, fixed_, num_particles_ * sizeof(bool), cudaMemcpyHostToDevice);
     }
 #endif
 }
@@ -476,6 +472,8 @@ void XPBDCloth::update(float dt) {
     // add external forces
 #ifdef HAS_CUDA
     if (cuda_enabled_) {
+        cudaMemcpy(cuda_particles_, particles_.data(), num_particles_ * sizeof(Particle), cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_fixed_, fixed_, num_particles_ * sizeof(bool), cudaMemcpyHostToDevice);
         updateCUDA(dt);
         cudaMemcpy(particles_.data(), cuda_particles_, num_particles_ * sizeof(Particle), cudaMemcpyDeviceToHost);
         return;

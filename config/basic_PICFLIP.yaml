@@ -5,3 +5,4 @@ jacobi_iters: 20
 flipness: 0.99
 vel_discount: 1.0
 weight_inf: 0.5
+load_precision: 0.01

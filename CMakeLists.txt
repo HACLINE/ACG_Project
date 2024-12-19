@@ -31,6 +31,7 @@ target_include_directories(main PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_include_directories(main PRIVATE ${CMAKE_SOURCE_DIR}/external/glm)
 target_include_directories(main PRIVATE ${CMAKE_SOURCE_DIR}/external/tiny_obj_loader)
 target_include_directories(main PRIVATE ${CMAKE_SOURCE_DIR}/external/stb_image_write)
+target_include_directories(main PRIVATE ${CMAKE_SOURCE_DIR}/external/voxelizer)
 
 if(CUDAToolkit_FOUND)
     target_include_directories(main PRIVATE ${CUDAToolkit_INCLUDE_DIRS})

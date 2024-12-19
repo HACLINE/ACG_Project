@@ -75,7 +75,7 @@ protected:
     int num_x_, num_z_;
     int num_particles_, num_springs_, num_faces_;
     std::vector<Particle> particles_;
-    std::vector<bool> fixed_;
+    bool* fixed_;
     std::vector<Spring> springs_;
     std::vector<Face> faces_;
     std::vector<glm::vec3> prev_acceleration_;

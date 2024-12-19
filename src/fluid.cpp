@@ -13,22 +13,78 @@ Fluid::~Fluid() {
 #endif
 }
 
+#define VOXELIZER_IMPLEMENTATION
+#include "voxelizer.h"
+
 Fluid::Fluid(const std::string& path, const YAML::Node& config, const std::string& type, const YAML::Node& cuda): type_(type), cuda_enabled_(cuda["enabled"].as<bool>()), cuda_block_size_(cuda["block_size"].as<int>()) {
     rho0_ = config["rho"].as<float>();
 
     if (config["init"].as<std::string>() == "fromfile") {
         std::ifstream fin;
         std::string filename = path + config["name"].as<std::string>();
-        fin.open(filename);
-        if (!fin) {
-            std::cerr << "Failed to open file: " << filename << std::endl;
-            return;
+        // if filename end with .fluid
+        if (filename.find(".fluid") != std::string::npos) {
+            fin.open(filename);
+            if (!fin) {
+                std::cerr << "Failed to open file: " << filename << std::endl;
+                return;
+            }
+            float x, y, z, r, m;
+            while (fin >> x >> y >> z >> r >> m) {
+                particles_.push_back(Particle{glm::vec3(x, y, z), glm::vec3(0.0f), glm::vec3(0.0f), r, m});
+            }
+            fin.close();
+        } else if (filename.find(".obj") != std::string::npos) {
+            tinyobj::attrib_t attrib;
+            std::vector<tinyobj::shape_t> shapes;
+            std::vector<tinyobj::material_t> materials;
+            std::string err;
+            bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, filename.c_str(), (filename + "/").c_str(), true);
+            if (!err.empty()) {
+                std::cerr << err << std::endl;
+            }
+            for (int i = 0; i < attrib.vertices.size(); i += 3) {
+                attrib.vertices[i] *= config["scale"][0].as<float>();
+                attrib.vertices[i + 1] *= config["scale"][1].as<float>();
+                attrib.vertices[i + 2] *= config["scale"][2].as<float>();
+            }
+            glm::vec3 center = glm::vec3(config["center"][0].as<float>(), config["center"][1].as<float>(), config["center"][2].as<float>());
+            for (int i = 0; i < attrib.vertices.size(); i += 3) {
+                attrib.vertices[i] *= config["scale"][0].as<float>();
+                attrib.vertices[i + 1] *= config["scale"][1].as<float>();
+                attrib.vertices[i + 2] *= config["scale"][2].as<float>();
+            }
+
+            for (size_t i = 0; i < shapes.size(); i++) {
+                vx_mesh_t* mesh;
+
+                mesh = vx_mesh_alloc(attrib.vertices.size(), shapes[i].mesh.indices.size());
+
+                for (size_t f = 0; f < shapes[i].mesh.indices.size(); f++) {
+                    mesh->indices[f] = shapes[i].mesh.indices[f].vertex_index;
+                }
+                for (size_t v = 0; v < attrib.vertices.size(); v += 3) {
+                    mesh->vertices[v / 3].x = attrib.vertices[v];
+                    mesh->vertices[v / 3].y = attrib.vertices[v + 1];
+                    mesh->vertices[v / 3].z = attrib.vertices[v + 2];
+                }
+
+                float res = config["density"].as<float>();
+                float precision = config["load_precision"].as<float>();
+                std::cout << "Voxelizing mesh with resolution " << res << " and precision " << precision << std::endl;
+
+                vx_mesh_t* result;
+                result = vx_voxelize(mesh, res, res, res, precision);
+
+                for (int j = 0; j < result->nvertices; ++j) {
+                    particles_.push_back(Particle{glm::vec3(result->vertices[j].x, result->vertices[j].y, result->vertices[j].z) + center, glm::vec3(0.0f), glm::vec3(0.0f), config["radius"].as<float>(), config["mass"].as<float>()});
+                }
+
+                vx_mesh_free(result);
+                vx_mesh_free(mesh);
+
+            }
         }
-        float x, y, z, r, m;
-        while (fin >> x >> y >> z >> r >> m) {
-            particles_.push_back(Particle{glm::vec3(x, y, z), glm::vec3(0.0f), glm::vec3(0.0f), r, m});
-        }
-        fin.close();
         std::cout << "[Load] Load " << particles_.size() << " particles from " << filename << std::endl;
     } else if (config["init"].as<std::string>() == "cube") {
         float x_gap = config["scale"][0].as<float>() / config["num"][0].as<int>(), 

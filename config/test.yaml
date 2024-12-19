@@ -37,8 +37,14 @@ load:
     type: PICFLIP
     cfg: 
       - init: fromfile # fromfile or cube
-        name: two_cuboid.fluid # this required for fromfile
-        scale: [0.5, 1.0, 0.5]
+        # name: two_cuboid.fluid # this required for fromfile
+        name: test.obj
+        # center and density required for loading from .obj
+        center: [0.0, 0.0, 0.0]
+        density: 0.05
+
+        scale: [1, 1, 1]
+        # scale: [0.5, 1.0, 0.5]
         num: [20, 40, 20]
         # num: [10, 20, 10]
         radius: 0.01 # these three required for cube
@@ -58,6 +64,7 @@ load:
       #   kd: [0, 0, 0]
       #   damping: 0.0005
       #   fix_corner: true
+      #   wetting_speed: 1.0
   wall:
     cfg:
       # - type: triangle
