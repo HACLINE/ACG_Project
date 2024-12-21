@@ -1,3 +1,8 @@
+### 2024.12.21 17:00
+by wxb
+Done:
+- Use `interact: enable: true` to enable control panel (before simulation) that controls fixed points of the cloth.
+
 ### 2024.12.19 15:00
 by xqc
 Done:
