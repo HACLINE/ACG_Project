@@ -121,13 +121,6 @@ void Renderer::renderMesh(const Mesh& mesh, glm::vec3 color = glm::vec3(0.0f, 0.
     auto interpolate_color = [](float w) {
         const float MIN = 0.5f, MAX = 1.0f;
         const float THRES1 = 0.3f, THRES2 = 50.0f;
-        // if (w > THRES2) {
-        //     return MIN;
-        // } else if (w > THRES1) {
-        //     return MIN + (w - THRES1) / (THRES2 - THRES1) * (MAX - MIN);
-        // } else {
-        //     return MAX;
-        // }
         if (w < THRES1) {
             return MAX;
         } else {
@@ -350,4 +343,119 @@ std::vector<float> Renderer::particlesToDensityField(const std::vector<Particle>
         densityField[index] += 1.0f;
     }
     return densityField;
+}
+
+static void mouse(const int button, const int state, const int x, const int y) {
+    // std::cout << "Mouse: " << button << " " << state << " " << x << " " << y << std::endl;
+    copyPanelInfo(control_panel, last_panel);
+    control_panel->click_x = x;
+    control_panel->click_y = control_panel->window_y + START_BUTTON_SIZE - y - 1;
+    control_panel->l_click_button |= (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN);
+    control_panel->r_click_button |= (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN);
+    control_panel->m_click_button |= (button == GLUT_MIDDLE_BUTTON && state == GLUT_DOWN);
+
+    control_panel->l_click_button &= !(button == GLUT_LEFT_BUTTON && state == GLUT_UP);
+    control_panel->r_click_button &= !(button == GLUT_RIGHT_BUTTON && state == GLUT_UP);
+    control_panel->m_click_button &= !(button == GLUT_MIDDLE_BUTTON && state == GLUT_UP);
+
+    control_panel->click_down = control_panel->l_click_button || control_panel->r_click_button || control_panel->m_click_button;
+
+    if (control_panel->click_down && !last_panel->click_down) {
+        int x = control_panel->click_x;
+        int y = control_panel->click_y;
+        if (y > control_panel->window_y && y < control_panel->window_y + START_BUTTON_SIZE) {
+            control_panel->finished = true; // start button
+            return ;
+        }
+        float dx = float(control_panel->window_x) / control_panel->num_x;
+        float dy = float(control_panel->window_y) / control_panel->num_y;
+        int i = x / dx;
+        int j = y / dy;
+        assignControlFix(i, j, !control_fix[i][j]);
+    }
+}
+
+void display() {
+    // std::cout << "display" << std::endl;
+    glClear(GL_COLOR_BUFFER_BIT);
+    float radius = 3.0f;
+    assert(control_panel != nullptr && control_panel->num_x > 0 && control_panel->num_y > 0);
+    // std::cout << control_panel->num_x << " " << control_panel->num_y << std::endl;
+    for (int i = 0; i < control_panel->num_x; ++i) {
+        for (int j = 0; j < control_panel->num_y; ++j) {
+            float x = (i + 0.5f) * control_panel->window_x / control_panel->num_x;
+            float y = (j + 0.5f) * control_panel->window_y / control_panel->num_y;
+            glBegin(GL_POLYGON);
+            if (control_fix[i][j]) {
+                glColor3f(1.0f, 0.0f, 0.0f); // Red
+            } else {
+                glColor3f(0.0f, 1.0f, 0.0f); // Green
+            }
+            // glVertex2f(x, y);
+            for (int k = 0; k < 4; ++k) {
+                float theta = k * 3.14159f / 2.0f;
+                glVertex2f(x + radius * cos(theta), y + radius * sin(theta));
+            }
+            glEnd();
+        }
+    }
+    // render the start button
+    glBegin(GL_POLYGON);
+    if (control_panel->finished == true) {
+        glColor3f(0.0f, 0.0f, 1.0f); // Blue
+    } else {
+        glColor3f(1.0f, 1.0f, 0.0f); // Yellow
+    }
+    float x = control_panel->window_x / 2.0f;
+    float y = control_panel->window_y + START_BUTTON_SIZE / 2.0;
+    float start_button_radius = START_BUTTON_SIZE / 2.5; // a little smaller
+    for (int k = 0; k < 4; ++k) {
+        float theta = k * 3.14159f / 2.0f;
+        glVertex2f(x + start_button_radius * cos(theta), y + start_button_radius * sin(theta));
+    }
+    glEnd();
+    // std::cout << "end" << std::endl;
+    glutSwapBuffers();
+}
+
+void timer(int value) {
+    glutPostRedisplay();
+    glutTimerFunc(200, timer, 0);
+}
+
+void controlPanelThread(int argc, char* argv[]) {
+    // glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
+    assert(control_panel != nullptr);
+    glutInitWindowSize(control_panel->window_x, control_panel->window_y + START_BUTTON_SIZE);
+    glutCreateWindow("Control Panel");
+    glutMouseFunc(mouse);
+    glutDisplayFunc(display);
+    glutTimerFunc(0, timer, 0); // Start the timer
+    glClearColor(1.0, 1.0, 1.0, 0.0);
+    glLoadIdentity();
+    glOrtho(0.0, control_panel->window_x, 0.0, control_panel->window_y + START_BUTTON_SIZE, -1.0, 1.0);
+    glutMainLoop();
+}
+
+void assignControlPanel(PanelInfo* panel_info) {
+    assert(control_panel == nullptr && last_panel == nullptr && panel_info != nullptr);
+    assert(panel_info->num_x <= MAX_CLOTH_SIZE && panel_info->num_y <= MAX_CLOTH_SIZE);
+    control_panel = panel_info;
+    last_panel = new PanelInfo();
+    copyPanelInfo(control_panel, last_panel);
+}
+
+PanelInfo* getControlPanel() { return control_panel; }
+
+void assignControlFix(int x, int y, bool fix) {
+    assert(control_panel != nullptr);
+    assert(x >= 0 && x < control_panel->num_x && y >= 0 && y < control_panel->num_y);
+    control_fix[x][y] = fix;
+}
+
+bool getControlFix(int x, int y) {
+    assert(control_panel != nullptr);
+    assert(x >= 0 && x < control_panel->num_x && y >= 0 && y < control_panel->num_y);
+    return control_fix[x][y];
 }

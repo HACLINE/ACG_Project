@@ -33,7 +33,10 @@ public:
     void applyDamping();
     void applyForce(const glm::vec3& f, int i);
     void applyForce(const glm::vec3& f) { for (int i = 0; i < num_particles_; ++i) applyForce(f, i); }
-    void setFix(int ind, bool fixed);
+    virtual void setFix(int ind, bool fixed) { assert(num_particles_ > ind && ind >= 0); fixed_[ind] = fixed; };
+    virtual void setFix(int x, int z, bool fixed) { assert(num_x_ > x && x >= 0 && num_z_ > z && z >= 0); setFix(x * num_z_ + z, fixed); };
+    bool getFix(int ind) { assert(num_particles_ > ind && ind >= 0); return fixed_[ind]; }
+    bool getFix(int x, int z) { assert(num_x_ > x && x >= 0 && num_z_ > z && z >= 0); return getFix(x * num_z_ + z); }
 
 #ifdef HAS_CUDA
     void applyAccelerationCUDA(const glm::vec3& a);
@@ -56,6 +59,7 @@ public:
     inline const int getNumParticles() const { return num_particles_; }
     inline const int getNumFaces() const { return num_faces_; }
     inline const int getNumSprings() const { return num_springs_; }
+    inline const std::pair<int, int> getNumGrids() const { return std::make_pair(num_x_, num_z_); }
     
 #ifdef HAS_CUDA
     Particle* getParticlesCUDA() { return cuda_particles_; }
@@ -73,6 +77,7 @@ protected:
     int cuda_block_size_;
 
     int num_x_, num_z_;
+    float mass_;
     int num_particles_, num_springs_, num_faces_;
     std::vector<Particle> particles_;
     bool* fixed_;
@@ -122,6 +127,8 @@ public:
     void updateCUDA(float dt);
 #endif
 
+    void setFix(int ind, bool fixed) override;
+    void setFix(int x, int z, bool fixed) override;
     std::vector<glm::vec3>& getOldPositions() override { return p_; }
 
 #ifdef HAS_CUDA
