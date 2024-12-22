@@ -87,3 +87,6 @@ cuda:
 
 blender:
   enabled: false
+
+interact:
+  enabled: false

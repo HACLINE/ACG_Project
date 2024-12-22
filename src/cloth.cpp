@@ -55,7 +55,7 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, const YAML::Node
         float x_gap = config["scale"][0].as<float>() / (x_num - 1),
               z_gap = config["scale"][1].as<float>() / (z_num - 1);
         float slope_gap = sqrt(x_gap * x_gap + z_gap * z_gap);
-        float mass = config["mass"].as<float>();
+        float mass = config["mass"].as<float>(); mass_ = mass;
         float x_start = - config["scale"][0].as<float>() / 2.0,
               z_start = - config["scale"][1].as<float>() / 2.0;
         float y_pos = config["height"].as<float>();
@@ -109,10 +109,8 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, const YAML::Node
             }
         }
 
-        fixed_ = new bool[num_particles_];
-        memset(fixed_, 0, num_particles_ * sizeof(bool));
-        // for (int i = 0; i < z_num; ++i) fixed_[i] = fixed_[(x_num-1) * z_num + i] = true;
-        // for (int i = 0; i < x_num; ++i) fixed_[i * z_num] = fixed_[i * z_num + (z_num-1)] = true;
+        fixed_ = new bool[particles_.size()];
+        for (int i = 0; i < particles_.size(); ++i) fixed_[i] = false;
         if (config["fix_corner"].as<std::string>() == "true") {
             fixed_[0] = fixed_[z_num - 1] = fixed_[particles_.size() - 1] = fixed_[particles_.size() - z_num] = true;
             particles_[0].mass = particles_[z_num - 1].mass = particles_[particles_.size() - 1].mass = particles_[particles_.size() - z_num].mass = 999999.0f;
@@ -120,7 +118,6 @@ Cloth::Cloth(const std::string& path, const YAML::Node& config, const YAML::Node
             fixed_[0] = fixed_[z_num - 1] = true;
             particles_[0].mass = particles_[z_num - 1].mass = 999999.0f;
         }
-        // fixed_[0] = fixed_[z_num - 1] = true;
 
         std::cout << "[Load] Cloth: Load " << particles_.size() << " particles and " << springs_.size() << " springs" << std::endl;
     }
@@ -179,11 +176,6 @@ void Cloth::computeNormals() {
     for (int i = 0; i < num_particles_; ++i) {
         vertex_norms_[i] = glm::normalize(vertex_norms_[i]);
     }
-}
-
-void Cloth::setFix(int ind, bool fixed) {
-    assert(num_particles_ > ind && ind >= 0);
-    fixed_[ind] = fixed;
 }
 
 void Cloth::applyAcceleration(const glm::vec3& a) {
@@ -503,4 +495,25 @@ void XPBDCloth::update(float dt) {
 
     // wetting effect
     wettingDiffusion(dt);
+}
+
+void XPBDCloth::setFix(int ind, bool fixed) {
+    assert(num_particles_ > ind && ind >= 0);
+    // std::cout << "hi" << std::endl;
+    fixed_[ind] = fixed;
+    if (fixed) {
+        particles_[ind].mass = 999999.0f;
+        w_[ind] = 0.0f;
+        particles_[ind].acceleration = particles_[ind].velocity = glm::vec3(0.0f);
+        force_buffer_[ind] = glm::vec3(0.0f);
+    } else {
+        particles_[ind].mass = mass_;
+        w_[ind] = 1.0f / mass_;
+    }
+    // std::cout << "bye" << std::endl;
+}
+
+void XPBDCloth::setFix(int x, int z, bool fixed) {
+    assert(num_x_ > x && x >= 0 && num_z_ > z && z >= 0);
+    setFix(x * num_z_ + z, fixed);
 }

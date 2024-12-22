@@ -170,6 +170,40 @@ void Simulation::update(float dt) {
     // }
 }
 
+// void Simulation::update(float dt, PanelInfo panel_info) { // Only support cloth for now!
+//     for (int i = 0; i < cloths_.size(); ++i) {
+//         if (panel_info.l_click_button) {
+//             std::pair<int, int> cloth_grid = cloths_[i]->getNumGrids();
+//             float posx = float(panel_info.click_x) / float(panel_info.window_x) * cloth_grid.first;
+//             float posz = float(panel_info.click_y) / float(panel_info.window_y) * cloth_grid.second;
+//             cloths_[i]->setFix(int(posx), int(posz), true);
+//             // std::cout << "Fix " << int(posx) << " " << int(posz) << std::endl;
+//         }
+//         cloths_[i]->applyGravity(gravity_);
+//     }
+
+//     for (int i = 0; i < cloths_.size(); ++i) {
+//         cloths_[i]->update(dt);
+//     }
+// }
+
+void Simulation::update(float dt, PanelInfo* panel_info) { // Only support cloth for now!
+    assert(panel_info != nullptr);
+    for (int i = 0; i < cloths_.size(); ++i) {
+        if (panel_info->l_click_button) {
+            std::pair<int, int> cloth_grid = cloths_[i]->getNumGrids();
+            float posx = float(panel_info->click_x) / float(panel_info->window_x) * cloth_grid.first;
+            float posz = float(panel_info->click_y) / float(panel_info->window_y) * cloth_grid.second;
+            cloths_[i]->setFix(int(posx), int(posz), true);
+            // std::cout << "Fix " << int(posx) << " " << int(posz) << std::endl;
+        }
+        cloths_[i]->applyGravity(gravity_);
+    }
+    for (int i = 0; i < cloths_.size(); ++i) {
+        cloths_[i]->update(dt);
+    }
+}
+
 Rigidbody* Simulation::getRigidbody(int i) const {
     assert(i < rigidbodies_.size());
     return rigidbodies_[i];

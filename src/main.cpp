@@ -95,6 +95,88 @@ int main(int argc, char* argv[]) {
 
     std::cout << "[main] Simulation loaded: " << simulation.getNumRigidbodies() << " rigid bodies, " << simulation.getNumFluids() << " fluids, " << simulation.getNumCloths() << " cloths, " << simulation.getNumWalls() << " walls." << std::endl;
 
+    if (config["interact"]["enabled"].as<bool>() == true) {
+        if (simulation.getNumCloths() > 0) {
+            Cloth* cloth = simulation.getCloth(0);
+            PanelInfo* cp = new PanelInfo(config["interact"]["windowsize"][0].as<int>(), config["interact"]["windowsize"][1].as<int>(), cloth->getNumGrids().first, cloth->getNumGrids().second);
+            assignControlPanel(cp);
+            // copyPanelInfo(control_panel, last_panel);
+            // for (int i = 0; i < control_panel->num_x; ++i) {
+            //     for (int j = 0; j < control_panel->num_y; ++j) {
+            //         control_fix[i][j] = false;
+            //     }
+            // }
+            if (simulation.getNumCloths() > 1) {
+                std::cerr << "[Warning] Have multiple cloths. Only the first cloth is interactive." << std::endl;
+            }
+        } else {
+            throw std::runtime_error("Need at least one cloth for interaction!");
+        }
+        std::thread control_panel_thread(controlPanelThread, argc, argv);
+        std::cout << "[main] Control panel started." << std::endl; 
+        
+        while (true) {
+            if (getControlPanel()->finished) {
+                std::cout << "[main] Control panel finished, fixing points..." << std::endl;
+                Cloth* cloth = simulation.getCloth(0);
+                for (int i = 0; i < cloth->getNumGrids().first; ++i) {
+                    // std::cout << "?" << i << std::endl;
+                    for (int j = 0; j < cloth->getNumGrids().second; ++j) {
+                        // std::cout << "???" << j << std::endl;
+                        if (getControlFix(i, j) == true) {
+                            cloth->setFix(i, j, true);
+                            std::cout << "[main] Fixed position (" << i << "," << j << ")" << std::endl;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
+        int FPS = config["video"]["fps"].as<int>();
+        int SPS = config["video"]["sps"].as<int>();
+        assert(SPS % FPS == 0);
+        float VIDEO_LENGTH = config["video"]["length"].as<float>();
+
+        std::cout << "[Generate] Generating images into ./figures ... " << std::endl;
+
+        float barcount = 0, bartotal = 100;
+
+        for (int _ = 0; _ < SPS * VIDEO_LENGTH; _++) {
+            while ((barcount + 1.0) * SPS * VIDEO_LENGTH <= bartotal * _ - 0.01) {
+                barcount++;
+                std::cout << "#";
+                if (int(barcount) % 5 == 0) std::cout << barcount;
+                std::cout.flush();
+            }
+            simulation.update(1.0f / SPS);
+            if (_ % (SPS / FPS) != 0) {
+                continue;
+            }
+
+            renderer.renderSimulation(simulation, _);
+            GLenum err;
+            while ((err = glGetError()) != GL_NO_ERROR) {
+                std::cerr << std::endl << "[Error] OpenGL error: " << err << std::endl;
+            }
+        }
+        std::cout << std::endl;
+        if (config["render"]["enable_gl"].as<bool>()) {
+            generateVideo(config["video"], figuresPath);
+        }
+        if (config["blender"]["enabled"].as<bool>()) {
+            std::cout << "[Blender] Rendering video ... " << std::endl;
+            std::string command = "blender --background --python src/render.py";
+            system(command.c_str());
+            generateVideo(config["video"], renderPath, "rendered.avi");
+        }
+
+        control_panel_thread.join();
+        delete control_panel;
+        delete last_panel;
+        return 0;
+    }
+
     int FPS = config["video"]["fps"].as<int>();
     int SPS = config["video"]["sps"].as<int>();
     assert(SPS % FPS == 0);
@@ -108,7 +190,7 @@ int main(int argc, char* argv[]) {
         while ((barcount + 1.0) * SPS * VIDEO_LENGTH <= bartotal * _ - 0.01) {
             barcount++;
             std::cout << "#";
-            if (int(barcount) % 5 == 0) std::cout<<barcount;
+            if (int(barcount) % 5 == 0) std::cout << barcount;
             std::cout.flush();
         }
 

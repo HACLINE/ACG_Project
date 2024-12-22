@@ -41,4 +41,17 @@ private:
     bool enable_gl_;
 };
 
+const static int MAX_CLOTH_SIZE = 100;
+const static int START_BUTTON_SIZE = 100;
+static bool control_fix[MAX_CLOTH_SIZE][MAX_CLOTH_SIZE];
+
+static PanelInfo *control_panel = nullptr, *last_panel = nullptr;
+
+static void mouse(const int button, const int state, const int x, const int y);
+void controlPanelThread(int argc, char* argv[]);
+void assignControlPanel(PanelInfo* panel_info);
+PanelInfo* getControlPanel();
+void assignControlFix(int x, int y, bool fix);
+bool getControlFix(int x, int y);
+
 #endif

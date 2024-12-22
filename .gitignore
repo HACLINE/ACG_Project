@@ -16,3 +16,6 @@ rendered.avi
 *.mp4
 # You can choose not to ignore the final report
 *.bbl
+*.cmake
+*.txt
+Makefile

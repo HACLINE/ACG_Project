@@ -115,3 +115,20 @@ std::string intToString(int x, int len) {
     }
     return s;
 }
+
+void copyPanelInfo(const PanelInfo* src, PanelInfo* dest) {
+    if (src == nullptr || dest == nullptr) {
+        return;
+    }
+    dest->window_x = src->window_x;
+    dest->window_y = src->window_y;
+    dest->num_x = src->num_x;
+    dest->num_y = src->num_y;
+    dest->click_x = src->click_x;
+    dest->click_y = src->click_y;
+    dest->l_click_button = src->l_click_button;
+    dest->r_click_button = src->r_click_button;
+    dest->m_click_button = src->m_click_button;
+    dest->click_down = src->click_down;
+    dest->finished = src->finished;
+}

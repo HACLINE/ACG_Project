@@ -7,6 +7,7 @@
 #include "rigid_body.h"
 #include "fluid.h"
 #include "cloth.h"
+#include "utils.h"
 
 class Simulation {
     public:
@@ -15,6 +16,8 @@ class Simulation {
         ~Simulation();
 
         void update(float dt);
+        // void update(float dt, PanelInfo panel_info);
+        void update(float dt, PanelInfo* panel_info);
 
         void addRigidbody(Rigidbody*);
         void addFluid(Fluid*);
