@@ -94,10 +94,11 @@ Fluid::Fluid(const std::string& path, const YAML::Node& config, const std::strin
         float x_start = - config["scale"][0].as<float>() / 2, 
               y_start = - config["scale"][1].as<float>() / 2, 
               z_start = - config["scale"][2].as<float>() / 2;
+        glm::vec3 center = glm::vec3(config["center"][0].as<float>(), config["center"][1].as<float>(), config["center"][2].as<float>());
         for (int i = 0; i < config["num"][0].as<int>(); ++i) {
             for (int j = 0; j < config["num"][1].as<int>(); ++j) {
                 for (int k = 0; k < config["num"][2].as<int>(); ++k) {
-                    particles_.push_back(Particle{glm::vec3(x_start + i * x_gap, y_start + j * y_gap, z_start + k * z_gap), glm::vec3(0.0f), glm::vec3(0.0f), radius, mass});
+                    particles_.push_back(Particle{glm::vec3(x_start + i * x_gap, y_start + j * y_gap, z_start + k * z_gap) + center, glm::vec3(0.0f), glm::vec3(0.0f), radius, mass});
                 }
             }
         }

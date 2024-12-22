@@ -108,6 +108,28 @@ void saveMeshToOBJ(const Mesh& mesh, const std::string& filename) {
     ofs.close();
 }
 
+void saveWettingsToCSV(const std::vector<float>& wettings, const std::string& filename) {
+    auto interpolate_color = [](float w) {
+        const float MIN = 0.5f, MAX = 1.0f;
+        const float THRES1 = 0.3f, THRES2 = 50.0f;
+        if (w < THRES1) {
+            return MAX;
+        } else {
+            return MIN + THRES1 * (MAX - MIN) / w;
+        }
+    };
+    std::ofstream ofs(filename);
+    if (!ofs.is_open()) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return;
+    }
+    
+    ofs << "wetting\n";
+    for (const auto& w : wettings) {
+        ofs << interpolate_color(w) << "\n";
+    }
+}
+
 std::string intToString(int x, int len) {
     std::string s = std::to_string(x);
     while (s.size() < len) {

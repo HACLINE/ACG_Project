@@ -1,3 +1,9 @@
+### 2024.12.22 19:00
+by xqc
+Done:
+- Fix `render.py`. Fail to render wetting effect.
+
+
 ### 2024.12.21 17:00
 by wxb
 Done:

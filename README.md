@@ -15,8 +15,7 @@ cargo install splashsurf
 
 - To enable rendering using Blender, please first install the following packages:
 ```py
-pip install bpy trimesh pyyaml
-brew install blender # or directly download blender from official cite https://www.blender.org/.
+pip install bpy trimesh pyyaml pandas
 ```
 and make sure that `src/render.py` can run successfully. Then, change the configuration file under `./config`:
 ```

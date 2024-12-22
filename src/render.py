@@ -3,6 +3,7 @@ import bmesh
 import trimesh
 import yaml
 import os
+import pandas as pd
 
 DEFAULT_MESH_MATERIAL = "DoubleSidedMaterial"
 SPHERE_MATERIAL = "SphereMaterial"
@@ -42,7 +43,7 @@ def int_to_string(num, length):
         num = "0" + num
     return num
 
-def mesh_to_blender(obj, name):
+def mesh_to_blender(obj, name, material, wetting=None):
     obj_mesh = bpy.data.meshes.new(name)
     
     # process mesh using bmesh
@@ -66,8 +67,7 @@ def mesh_to_blender(obj, name):
     blender_object = bpy.data.objects.new(name, obj_mesh)
     
     bpy.context.collection.objects.link(blender_object)
-    if not obj.data.materials:
-        material = bpy.data.materials.new(name=DEFAULT_MESH_MATERIAL)
+    if not blender_object.data.materials:
         blender_object.data.materials.append(material)
     else:
         material = blender_object.data.materials[0]
@@ -76,7 +76,7 @@ def mesh_to_blender(obj, name):
     assert name == blender_object.name
     print(f"[Blender] Mesh name: {name} has been added to the scene. Info: {len(blender_object.data.vertices)} vertices, {len(blender_object.data.edges)} edges, {len(blender_object.data.polygons)} faces.")
 
-    return obj
+    return blender_object
 
 def render_sphere_from_file(file_path, radius_offset=0.02):
     with open(file_path, 'r') as file:
@@ -89,36 +89,8 @@ def render_sphere_from_file(file_path, radius_offset=0.02):
         sphere.data.materials.append(material)
     return sphere
 
-def process_material(mesh, material):
-        if mesh.data.materials:
-            mesh.data.materials[0] = material
-        else:
-            mesh.data.materials.append(material)
-
 class Render:
     def __init__(self, config):
-# render:
-#   init:
-#     argc: 0
-#     argv: []
-#   camera:
-#     eye: [15.0, 9.0, 15.0]
-#     center: [0.0, 0.0, 0.0]
-#     up: [0.0, 1.0, 0.0]
-#   title: Basic
-#   windowsize: [800, 600]
-#   viewport: [0, 0, 800, 600]
-#   perspective: 
-#     fovy: 45.0
-#     aspect: 1.3333
-#     znear: 1.0
-#     zfar: 1000.0
-#   clearcolor: [1.0, 1.0, 1.0, 1.0]
-#   light:
-#     position: [0.5, 1.0, 0.0, 0.0]
-#     ambient: [0.2, 0.2, 0.2, 1.0]
-#     diffuse: [0.8, 0.8, 0.8, 1.0]
-#     specular: [1.0, 1.0, 1.0, 1.0]
         self.config = config
 
         camera_location = tuple(config["render"]["camera"]["eye"])
@@ -144,6 +116,7 @@ class Render:
             obj.select_set(True)
         bpy.ops.object.delete()
         
+        bpy.ops.object.camera_add(location=camera_location, rotation=camera_rotation)
         camera = bpy.context.object
         camera.data.lens = config["render"]["perspective"]["render_fovy"]
         camera.data.sensor_width = config["render"]["perspective"]["sensor_width"]
@@ -211,15 +184,20 @@ class Render:
         if self.config["load"]["fluid"]["cfg"] is not None:
             for i in range(len(self.config["load"]["fluid"]["cfg"])):
                 all_mesh.append(trimesh.load(data_path + "/fluids/" + int_to_string(i, 2) + ".obj"))
-                all_mesh[-1] = mesh_to_blender(all_mesh[-1], "Fluid" + int_to_string(i, 2))
-                process_material(all_mesh[-1], fluid_material)
+                all_mesh[-1] = mesh_to_blender(all_mesh[-1], "Fluid" + int_to_string(i, 2), fluid_material)
         
         cloth_material = self.get_material(CLOTH_MATERIAL, CLOTH_MAT_PATH)
         if self.config["load"]["cloth"]["cfg"] is not None:
             for i in range(len(self.config["load"]["cloth"]["cfg"])):
-                all_mesh.append(trimesh.load(data_path + "/cloths/" + int_to_string(i, 2) + ".obj"))
-                all_mesh[-1] = mesh_to_blender(all_mesh[-1], "Cloth" + int_to_string(i, 2))
-                process_material(all_mesh[-1], cloth_material)
+                cloth_mesh = trimesh.load(data_path + "/cloths/" + int_to_string(i, 2) + ".obj")
+                wetting_file = data_path + "/cloths/" + int_to_string(i, 2) + ".csv"
+                if os.path.exists(wetting_file):
+                    wetting_df = pd.read_csv(wetting_file, header=None)
+                    wetting = wetting_df[0][1:].astype(float).tolist()
+                else:
+                    wetting = [1.0] * len(cloth_mesh.vertices)
+                cloth_mesh = mesh_to_blender(cloth_mesh, "Cloth" + int_to_string(i, 2), cloth_material, wetting)
+                all_mesh.append(cloth_mesh)
         
         sphere_files = [f for f in os.listdir(data_path + "/spheres") if f.endswith(".sphere")]
         for sphere_file in sphere_files:
@@ -230,8 +208,7 @@ class Render:
         
     def add_container(self, container_mesh):
         glass_material = self.get_material(CONTAINER_MATERIAL, CONTAINER_MAT_PATH)
-        container_mesh = mesh_to_blender(container_mesh, "Container")
-        process_material(container_mesh, glass_material)
+        container_mesh = mesh_to_blender(container_mesh, "Container", glass_material)
         return container_mesh
         
     def get_material(self, mat_name, file_name):
@@ -247,8 +224,10 @@ def main():
     config = load_config(os.environ['CONFIG'])
     renderer = Render(config)
 
-    for i in range(0, config["video"]["sps"] * config["video"]["length"], config["video"]["sps"] // config["video"]["fps"]):
-        renderer.render_all("./.cache/frame_" + int_to_string(i, 6), None, os.environ['RENDER'] + "/frame_" + int_to_string(i, 6) + ".png")
+    # for i in range(0, config["video"]["sps"] * config["video"]["length"], config["video"]["sps"] // config["video"]["fps"]):
+        # renderer.render_all("./.cache/frame_" + int_to_string(i, 6), None, os.environ['RENDER'] + "/frame_" + int_to_string(i, 6) + ".png")
+    i = 183
+    renderer.render_all("./.cache/frame_" + int_to_string(i, 6), None, os.environ['RENDER'] + "/frame_" + int_to_string(i, 6) + ".png")
 
 if __name__ == "__main__":
     main()

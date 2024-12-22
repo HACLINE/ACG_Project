@@ -17,6 +17,8 @@ std::ostream& operator<<(std::ostream&, const Particle&);
 
 void saveParticlesToPLY(const std::vector<Particle>& particles, const std::string& filename);
 
+void saveWettingsToCSV(const std::vector<float>& wettings, const std::string& filename);
+
 Mesh loadMeshFromOBJ(const std::string& filename);
 
 void saveMeshToOBJ(const Mesh& mesh, const std::string& filename);

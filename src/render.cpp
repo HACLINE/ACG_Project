@@ -307,6 +307,7 @@ void Renderer::renderSimulation(const Simulation& simulation, int frame) {
 
     for (int i = 0; i < simulation.getNumCloths(); i++) {
         saveMeshToOBJ(simulation.getCloth(i)->getMesh(), subdir + "/cloths/" + intToString(i, 2) + ".obj");
+        saveWettingsToCSV(simulation.getCloth(i)->getWettings(), subdir + "/cloths/" + intToString(i, 2) + ".csv");
     }
 
     for (int i = 0; i < simulation.getNumSpheres(); i++) {

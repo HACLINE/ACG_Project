@@ -6,7 +6,7 @@ render:
   title: WoBingWang
   clearcolor: [1.0, 1.0, 1.0, 1.0]
   camera:
-    eye: [5.0, 1.5, 5.0]
+    eye: [5.0, 3, 5.0]
     center: [0.0, 0.0, 0.0]
     up: [0.0, 1.0, 0.0]
 
@@ -36,8 +36,10 @@ load:
     type: PICFLIP
     cfg: 
       - init: cube # fromfile or cube
-        name: test.fluid # this required for fromfile
-        center: [0.0, 0.0, 0.0]
+        name: test.obj # this required for fromfile
+        center: [0.0, 3.0, 0.0]
+        density: 0.04
+
         scale: [0.8, 0.8, 0.8]
         num: [40, 40, 40]
         # num: [10, 20, 10]
@@ -52,6 +54,19 @@ load:
         delta_y: 0.8
         num: [80, 80]
         height: -0.62
+        mass: 0.1
+        radius: 0.05
+        ks: [1000.0, 1000.0, 1000.0]
+        kd: [0, 0, 0]
+        damping: 0.0015
+        wetting_speed: 1.0
+        fix_corner: true
+      - init: square # fromfile or square
+        name: test.cloth
+        scale: [3, 3]
+        delta_y: -0.8
+        num: [80, 80]
+        height: 1.62
         mass: 0.1
         radius: 0.05
         ks: [1000.0, 1000.0, 1000.0]
@@ -103,8 +118,8 @@ video:
 simulation:
   box: 
     min: [-1.6, -2.2, -1.6]
-    max: [1.6, 1.0, 1.6]
-  resolution: [60, 60, 60]
+    max: [1.6, 4.2, 1.6]
+  resolution: [60, 120, 60]
 
 cuda:
   enabled: true
