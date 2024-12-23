@@ -550,6 +550,7 @@ void PICFLIPFluid::addForce(const glm::vec3& a, float dt) {
         vel_grid_->vec(cell).z += a.z * dt;
         if (cell.x == 0 || cell.x == resolution.x - 1) vel_grid_->vec(cell).x = 0.0f;
         if (cell.z == 0 || cell.z == resolution.z - 1) vel_grid_->vec(cell).z = 0.0f;
+        if (cell.x == 0 || cell.x == resolution.x - 1 || cell.z == 0 || cell.z == resolution.z - 1) vel_grid_->vec(cell).y += a.y * dt;
         if (cell.y == 0) vel_grid_->vec(cell).y = 0.0f;
         if (cell.y == resolution.y - 1 && vel_grid_->vec(cell).y > 0.0f) vel_grid_->vec(cell).y = 0.0f;
     }

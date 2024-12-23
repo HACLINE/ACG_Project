@@ -6,8 +6,8 @@ render:
   title: WoBingWang
   clearcolor: [1.0, 1.0, 1.0, 1.0]
   camera:
-    eye: [5.0, 3, 5.0]
-    center: [0.0, 0.0, 0.0]
+    eye: [1.0, 3, 7.0]
+    center: [0.0, 1.0, 0.0]
     up: [0.0, 1.0, 0.0]
 
 load:
@@ -37,13 +37,13 @@ load:
     cfg: 
       - init: cube # fromfile or cube
         name: test.obj # this required for fromfile
-        center: [0.0, 3.0, 0.0]
+        center: [0.0, 2.4, 0.0]
         density: 0.04
 
         scale: [0.8, 0.8, 0.8]
         num: [40, 40, 40]
         # num: [10, 20, 10]
-        radius: 0.002 # these three required for cube
+        radius: 0.05 # these three required for cube
         mass: 6e-3
         rho: 1000.0
   cloth: 
@@ -125,4 +125,4 @@ cuda:
   enabled: true
 
 blender:
-  enabled: true
+  enabled: false

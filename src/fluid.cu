@@ -262,9 +262,9 @@ __device__ int PICFLIPindex(const glm::ivec3& pos, GridConfig* config_) {
 
 __device__ int PICFLIPcindex(const glm::ivec3& pos, GridConfig* config_) {
     glm::vec3 p = glm::vec3(pos);
-    p.x = p.x < 0 ? 0 : (p.x >= config_->resolution.x ? config_->resolution.x - 1 : p.x);
-    p.y = p.y < 0 ? 0 : (p.y >= config_->resolution.y ? config_->resolution.y - 1 : p.y);
-    p.z = p.z < 0 ? 0 : (p.z >= config_->resolution.z ? config_->resolution.z - 1 : p.z);
+    p.x = p.x < 0 ? 0 : (p.x >= config_->resolution.x ? config_->resolution.x : p.x);
+    p.y = p.y < 0 ? 0 : (p.y >= config_->resolution.y ? config_->resolution.y : p.y);
+    p.z = p.z < 0 ? 0 : (p.z >= config_->resolution.z ? config_->resolution.z : p.z);
     return p.x + p.y * config_->resolution.x + p.z * config_->resolution.x * config_->resolution.y;    
 }
 
@@ -421,6 +421,7 @@ __global__ void PICFLIPaddForceTask(PICFLIPCell* cuda_grid_, const glm::vec3 a, 
 
     if (cell.x == 0 || cell.x == config_->resolution.x - 1) cuda_grid_[idx].vel.x = 0.0f;
     if (cell.z == 0 || cell.z == config_->resolution.z - 1) cuda_grid_[idx].vel.z = 0.0f;
+    if (cell.x == 0 || cell.x == config_->resolution.x - 1 || cell.z == 0 || cell.z == config_->resolution.z - 1) cuda_grid_[idx].vel.y += a.y * dt;
     if (cell.y == 0) cuda_grid_[idx].vel.y = 0.0f;
     if (cell.y == config_->resolution.y - 1 && cuda_grid_[idx].vel.y > 0.0f) cuda_grid_[idx].vel.y = 0.0f;
 }

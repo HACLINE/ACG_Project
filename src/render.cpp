@@ -215,7 +215,7 @@ void Renderer::renderFluid(Fluid* fluid, int method = SPLASH_SURF) {
                     if (densityField[index] > 0.0f) {
                         glPushMatrix();
                         glTranslatef(x * gridSpacing - 1.0f, y * gridSpacing - 1.0f, z * gridSpacing - 1.0f);
-                        glColor3f(0.0f, 0.0f, 1.0f);
+                        glColor3f(0.68f, 0.85f, 0.90f);
                         glutSolidCube(gridSpacing);
                         glPopMatrix();
                     }
@@ -232,7 +232,7 @@ void Renderer::renderFluid(Fluid* fluid, int method = SPLASH_SURF) {
         Mesh mesh{vertices, indices};
         mesh_subdivision(mesh);
 
-        renderMesh(mesh);
+        renderMesh(mesh, glm::vec3(0.0f, 0.0f, 1.0f));
     } else if (method == SPLASH_SURF) {
         saveParticlesToPLY(particles, "./.cache/tmp/particles.ply");
 
@@ -242,7 +242,7 @@ void Renderer::renderFluid(Fluid* fluid, int method = SPLASH_SURF) {
 
         Mesh mesh = loadMeshFromOBJ("./.cache/tmp/mesh.obj");
 
-        renderMesh(mesh);
+        renderMesh(mesh, glm::vec3(0.0f, 0.0f, 1.0f));
     }
 }
 
