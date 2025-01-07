@@ -22,6 +22,7 @@ config: see config/ for examples.
 #include <map>
 #include <chrono>
 #include <cstdlib>
+#include <fstream>
 
 #include "yaml.h"
 #include "render.h"
@@ -124,11 +125,21 @@ int main(int argc, char* argv[]) {
                     for (int j = 0; j < cloth->getNumGrids().second; ++j) {
                         // std::cout << "???" << j << std::endl;
                         if (getControlFix(i, j) == true) {
-                            cloth->setFix(i, j, true);
-                            std::cout << "[main] Fixed position (" << i << "," << j << ")" << std::endl;
+                            cloth->setFix(79-i, j, true);
+                            // std::cout << "[main] Fixed position (" << i << "," << j << ")" << std::endl;
                         }
                     }
                 }
+                // std::ifstream infile("2.txt");
+                // std::string line;
+                // while (std::getline(infile, line)) {
+                //     int x, y;
+                //     if (sscanf(line.c_str(), "[main] Fixed position (%d,%d)", &x, &y) == 2) {
+                //         cloth->setFix(80-x, y, true);
+                //         std::cout << "[main] Fixed position (" << x << "," << y << ")" << std::endl;
+                //     }
+                // }
+
                 break;
             }
         }

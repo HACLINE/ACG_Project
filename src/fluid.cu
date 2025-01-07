@@ -421,7 +421,7 @@ __global__ void PICFLIPaddForceTask(PICFLIPCell* cuda_grid_, const glm::vec3 a, 
 
     if (cell.x == 0 || cell.x == config_->resolution.x - 1) cuda_grid_[idx].vel.x = 0.0f;
     if (cell.z == 0 || cell.z == config_->resolution.z - 1) cuda_grid_[idx].vel.z = 0.0f;
-    if (cell.x == 0 || cell.x == config_->resolution.x - 1 || cell.z == 0 || cell.z == config_->resolution.z - 1) cuda_grid_[idx].vel.y += a.y * dt;
+    // if ( (cell.x == 0 || cell.x == config_->resolution.x - 1 || cell.z == 0 || cell.z == config_->resolution.z - 1) && (cell.y >= 3) ) cuda_grid_[idx].vel.y += a.y * dt;
     if (cell.y == 0) cuda_grid_[idx].vel.y = 0.0f;
     if (cell.y == config_->resolution.y - 1 && cuda_grid_[idx].vel.y > 0.0f) cuda_grid_[idx].vel.y = 0.0f;
 }

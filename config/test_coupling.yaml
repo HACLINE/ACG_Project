@@ -110,4 +110,4 @@ cuda:
   enabled: true
 
 blender:
-  enabled: true
+  enabled: false

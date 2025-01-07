@@ -35,20 +35,18 @@ load:
     base: basic_PICFLIP.yaml
     type: PICFLIP
     cfg: 
-      - init: cube # fromfile or cube
-        name: test.obj # this required for fromfile
+      - init: cube
+        name: test.obj
         center: [0.0, 2.4, 0.0]
         density: 0.04
-
         scale: [0.8, 0.8, 0.8]
         num: [40, 40, 40]
-        # num: [10, 20, 10]
-        radius: 0.05 # these three required for cube
+        radius: 0.05
         mass: 6e-3
         rho: 1000.0
   cloth: 
     cfg:
-      - init: square # fromfile or square
+      - init: square
         name: test.cloth
         scale: [3, 3]
         delta_y: 0.8
@@ -61,7 +59,7 @@ load:
         damping: 0.0015
         wetting_speed: 1.0
         fix_corner: true
-      - init: square # fromfile or square
+      - init: square
         name: test.cloth
         scale: [3, 3]
         delta_y: -0.8

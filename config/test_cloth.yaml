@@ -6,9 +6,9 @@ render:
   title: WoBingWang
   clearcolor: [1.0, 1.0, 1.0, 1.0]
   camera:
-    eye: [5.0, 1.5, 5.0]
+    eye: [0.0, 6.0, 0.0]
     center: [0.0, 0.0, 0.0]
-    up: [0.0, 1.0, 0.0]
+    up: [0.0, 0.0, 1.0]
 
 load:
   rigidbody:
@@ -50,14 +50,14 @@ load:
         scale: [3, 3]
         delta_y: 0.8
         num: [80, 80]
-        height: -0.62
+        height: 1.0
         mass: 0.1
         radius: 0.05
         ks: [1000.0, 1000.0, 1000.0]
         kd: [0, 0, 0]
-        damping: 0.0015
+        damping: 0.003
         wetting_speed: 1.0
-        fix_corner: true
+        fix_corner: false
   wall:
     cfg:
       # - type: triangle
@@ -97,7 +97,7 @@ load:
 video:
   fps: 20
   sps: 60
-  length: 2
+  length: 3
 
 simulation:
   box: 

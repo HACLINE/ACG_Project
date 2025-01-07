@@ -37,7 +37,7 @@ render:
     surfacetension: 0.6
     subdomain-grid: true
     mesh-cleanup: true
-    mesh-smoothing-weights: true
+    mesh-smoothing-weights: false
     mesh-smoothing-iters: 25
     normals: true
     normals-smoothing-iters: 10

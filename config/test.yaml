@@ -36,16 +36,16 @@ load:
     base: basic_PICFLIP.yaml
     type: PICFLIP
     cfg: 
-      - init: fromfile # fromfile or cube
+      - init: cube # fromfile or cube
         # name: two_cuboid.fluid # this required for fromfile
-        name: test.obj
+        # name: test.obj
         # center and density required for loading from .obj
         center: [0.0, 0.0, 0.0]
-        density: 0.05
+        # density: 0.05
 
         scale: [1, 1, 1]
         # scale: [0.5, 1.0, 0.5]
-        num: [20, 40, 20]
+        num: [40, 40, 40]
         # num: [10, 20, 10]
         radius: 0.01 # these three required for cube
         mass: 6e-3
@@ -108,7 +108,7 @@ video:
 
 simulation:
   box: 
-    min: [-1.0, -2.2, -1.0]
+    min: [-1.0, -1.0, -1.0]
     max: [1.0, 1.0, 1.0]
   resolution: [30, 30, 30]
 

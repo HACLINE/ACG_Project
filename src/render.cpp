@@ -155,11 +155,13 @@ void Renderer::renderMesh(const Mesh& mesh, glm::vec3 color = glm::vec3(0.0f, 0.
 
             glm::vec3 normal = glm::normalize(glm::cross(v2 - v1, v3 - v1));
             glNormal3f(normal.x, normal.y, normal.z);
-
+            // glColor4f(w1 * color.x, w1 * color.y, w1 * color.z, 0.5f);
             glColor3f(w1 * color.x, w1 * color.y, w1 * color.z);
             glVertex3f(v1.x, v1.y, v1.z);
+            // glColor4f(w2 * color.x, w2 * color.y, w2 * color.z, 0.5f);
             glColor3f(w2 * color.x, w2 * color.y, w2 * color.z);
             glVertex3f(v2.x, v2.y, v2.z);
+            // glColor4f(w3 * color.x, w3 * color.y, w3 * color.z, 0.5f);
             glColor3f(w3 * color.x, w3 * color.y, w3 * color.z);
             glVertex3f(v3.x, v3.y, v3.z);
         }
@@ -372,7 +374,14 @@ static void mouse(const int button, const int state, const int x, const int y) {
         float dy = float(control_panel->window_y) / control_panel->num_y;
         int i = x / dx;
         int j = y / dy;
-        assignControlFix(i, j, !control_fix[i][j]);
+        for (int _i = -1; _i <= 1; ++_i) {
+            for (int _j = -1; _j <= 1; ++_j) {
+                if (i + _i >= 0 && i + _i < control_panel->num_x && j + _j >= 0 && j + _j < control_panel->num_y) {
+                    assignControlFix(i + _i, j + _j, true);
+                }
+            }
+        }
+        // assignControlFix(i, j, true);
     }
 }
 
